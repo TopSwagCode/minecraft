@@ -35,31 +35,9 @@
 			</form>
 		</div>
 	</div>
-	<header>
-		<h1>Hex Tabletop Demo</h1>
-		<div class="controls">
-			<div id="hand" class="hand" aria-live="polite" aria-label="Cards in hand"></div>
-			<!-- End Turn button now rendered in canvas -->
-		</div>
-		<div class="status" id="status"></div>
-	</header>
 	<main>
 		<canvas id="board" width="900" height="700" aria-label="Hex board" role="img"></canvas>
-		<aside class="legend">
-			<h2>How to Play</h2>
-			<ol>
-				<li>At the start of your turn you automatically draw 3 terrain cards (deck: 2 Grass, 2 Sand, 2 Water; reshuffle when empty).</li>
-				<li>Select one of your pieces (Player 1: Blue, Player 2: Red).</li>
-				<li>Highlighted adjacent hexes are those whose terrain matches at least one card in your hand.</li>
-				<li>Click a highlighted hex to move there, consuming one matching card from your hand.</li>
-				<li>When out of cards (or earlier if you wish) press End Turn. Then the other player draws and goes.</li>
-			</ol>
-			<p>Goal (example): Reach the opponent's starting side or just experiment.</p>
-		</aside>
 	</main>
-	<footer>
-		<small>Prototype demo. Use and extend freely.</small>
-	</footer>
 	<script type="module" src="textures.js"></script>
 	<script type="module" src="src/game.js"></script>
 </body>
