@@ -98,6 +98,7 @@ export function drawHand(ctx, canvas){
       drawAnimatedCard(ctx, anim.card, x, y, prog, anim);
     }
   }
+  drawEndTurnButton(ctx, canvas);
 }
 
 function roundedRect(ctx,x,y,w,h,r){
@@ -176,6 +177,30 @@ function drawAnimatedCard(ctx, card, x, y, prog, anim){
   ctx.globalAlpha=1; ctx.fillStyle='#fff'; ctx.font='600 13px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(card.terrain, x+w/2, y+h/2 - 6);
   ctx.fillStyle='#ffd166'; ctx.font='10px system-ui'; ctx.fillText('r'+card.range, x+w/2, y+h/2 + 10);
+  ctx.restore();
+}
+
+function drawEndTurnButton(ctx, canvas){
+  const b = state.endTurnButton;
+  // Position button above piles right side
+  b.w = 140; b.h = 44;
+  b.x = canvas.width - b.w - 16;
+  b.y = canvas.height -  (CARD_H + PADDING) - b.h - 18;
+  ctx.save();
+  const enabled = state.endTurnEnabled && !state.winner;
+  ctx.globalAlpha = enabled ? 0.95 : 0.45;
+  const isHover = state.hoverControl === 'endTurn';
+  const grad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
+  if (isHover && enabled){
+    grad.addColorStop(0, '#3b82f6'); grad.addColorStop(1, '#1d4ed8');
+  } else {
+    grad.addColorStop(0, '#2563eb'); grad.addColorStop(1, '#1749b3');
+  }
+  ctx.fillStyle = grad;
+  roundedRect(ctx, b.x, b.y, b.w, b.h, 10); ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = isHover && enabled ? '#163d8c' : '#0d285a'; ctx.stroke();
+  ctx.font = '600 16px system-ui'; ctx.fillStyle = '#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('End Turn', b.x + b.w/2, b.y + b.h/2 + 1);
   ctx.restore();
 }
 

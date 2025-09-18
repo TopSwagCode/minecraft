@@ -125,8 +125,42 @@ function drawWinOverlay(player){
   ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(`Player ${player} Wins!`, canvas.width/2, canvas.height/2);
   ctx.font='20px system-ui';
-  ctx.fillText('Refresh or reset to play again', canvas.width/2, canvas.height/2 + 50);
+  ctx.fillText('Choose an option:', canvas.width/2, canvas.height/2 + 50);
+
+  // Buttons
+  const labels = [ { id:'play-again', label:'Play Again' }, { id:'start-screen', label:'Start Setup' } ];
+  const btnW = 200, btnH = 50; const gap = 30;
+  const totalW = btnW*labels.length + gap*(labels.length-1);
+  let startX = canvas.width/2 - totalW/2;
+  const y = canvas.height/2 + 120;
+  state.winButtons = [];
+  ctx.font = '600 20px system-ui';
+  labels.forEach((b, idx) => {
+    const x = startX + idx*(btnW + gap);
+    const isHover = state.hoverControl === 'win:'+b.id;
+    const grad = ctx.createLinearGradient(x,y,x,y+btnH);
+    if (isHover){
+      grad.addColorStop(0,'#3b82f6'); grad.addColorStop(1,'#1d4ed8');
+    } else {
+      grad.addColorStop(0,'#2563eb'); grad.addColorStop(1,'#1749b3');
+    }
+    ctx.fillStyle = grad; ctx.globalAlpha = 0.95;
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x,y,btnW,btnH,12) : (ctx.save(),roundedRectPolyfill(ctx,x,y,btnW,btnH,12));
+    ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='#0d285a'; ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(b.label, x+btnW/2, y+btnH/2+1);
+    state.winButtons.push({ id:b.id, label:b.label, x, y, w:btnW, h:btnH });
+  });
   ctx.restore();
+}
+
+function roundedRectPolyfill(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath(); ctx.restore();
 }
 
 function drawPreviewPath(path){

@@ -3,6 +3,8 @@ import { roundAxial, key } from '../core/hex.js';
 import { computeReachable } from '../systems/movement.js';
 import { terrainOfHex } from '../utils/terrain.js';
 import { canEnterTerrain, consumeCard, handEmpty, updateHandUI } from '../systems/cards.js';
+import { endTurn } from '../gameExports.js';
+import { resetGameKeepSetup, showStartScreenAgain } from '../reset.js';
 import { animateMove } from '../systems/animation.js';
 import { hasAnyMoves, getCanvas, pixelToAxial } from '../view/board.js';
 import { handleCardPointer } from '../view/handCanvas.js';
@@ -117,13 +119,13 @@ function simulateClick(x,y){
       animateMove(piece, path, () => {
         consumeCard(cardId);
         state.previewPath = null; state._reachableData = null;
-        if (handEmpty()) document.getElementById('endTurnBtn').disabled = false;
+  if (handEmpty()) state.endTurnEnabled = true;
         if (!hasAnyMoves()) hintNoMoves();
         updateStatus(); updateHandUI();
         const last = path[path.length-1];
         if (!state.winner){
           const terr = terrainOfHex(last.q,last.r);
-          if (terr === 'diamond') { state.winner = state.currentPlayer; document.getElementById('endTurnBtn').disabled = true; }
+          if (terr === 'diamond') { state.winner = state.currentPlayer; state.endTurnEnabled = false; }
         }
       });
     }
@@ -147,6 +149,23 @@ function simulateHover(x,y){
 function onClick(evt){
   if (state.animating) return;
   const { x, y } = toCanvasCoords(evt.clientX, evt.clientY);
+  // Win overlay buttons
+  if (state.winner && state.winButtons && state.winButtons.length){
+    const hit = state.winButtons.find(b => x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h);
+    if (hit){
+      if (hit.id === 'play-again'){
+        resetGameKeepSetup();
+      } else if (hit.id === 'start-screen'){
+        showStartScreenAgain();
+      }
+      return;
+    }
+  }
+  // End Turn button region
+  const btn = state.endTurnButton;
+  if (state.endTurnEnabled && x >= btn.x && x <= btn.x+btn.w && y >= btn.y && y <= btn.y+btn.h){
+    endTurn(); return;
+  }
   if (handleCardPointer(x,y,true)) return;
   const axial = roundAxial(pixelToAxial(x,y));
   const k = key(axial);
@@ -164,7 +183,7 @@ function onClick(evt){
       animateMove(piece, path, () => {
         consumeCard(cardId);
         state.previewPath = null; state._reachableData = null;
-        if (handEmpty()) document.getElementById('endTurnBtn').disabled = false;
+  if (handEmpty()) state.endTurnEnabled = true;
         if (!hasAnyMoves()) hintNoMoves();
         updateStatus(); updateHandUI();
         // Win condition: entering diamond hex
@@ -174,7 +193,7 @@ function onClick(evt){
             if (terr === 'diamond') {
               state.winner = state.currentPlayer;
               // Disable further interaction
-              document.getElementById('endTurnBtn').disabled = true;
+              state.endTurnEnabled = false;
             }
         }
       });
@@ -184,9 +203,24 @@ function onClick(evt){
 
 function onMove(evt){
   if (state.animating) return;
+  const { x, y } = toCanvasCoords(evt.clientX, evt.clientY);
+  // Win buttons hover
+  if (state.winner && state.winButtons && state.winButtons.length){
+    const hit = state.winButtons.find(b => x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h);
+    state.hoverControl = hit ? 'win:'+hit.id : (state.hoverControl && state.hoverControl.startsWith('win:') ? null : state.hoverControl);
+    if (hit) return; // suspend board/card hover
+  } else {
+    // End turn hover
+    const b = state.endTurnButton;
+    if (state.endTurnEnabled && x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h){
+      state.hoverControl = 'endTurn';
+      return; // don't treat as board move preview
+    } else if (state.hoverControl === 'endTurn') {
+      state.hoverControl = null;
+    }
+  }
   if (state.selectedPieceId == null){ state.previewPath = null; return; }
   const piece = state.pieces.find(p => p.id === state.selectedPieceId); if (!piece){ state.previewPath=null; return; }
-  const { x, y } = toCanvasCoords(evt.clientX, evt.clientY);
   if (handleCardPointer(x,y,false)) return;
   const axial = roundAxial(pixelToAxial(x,y)); const k = key(axial);
   if (!state.board.has(k)){ state.previewPath=null; return; }

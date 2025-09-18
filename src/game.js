@@ -21,12 +21,14 @@ function startTurn(options={}){
   ensurePlayerState(state.currentPlayer);
   const pdata = state.playerData[state.currentPlayer];
   pdata.hand = []; pdata.selectedCard = null; state.handLayoutDirty = true;
+  state.endTurnEnabled = false; // will be enabled after draw animations settle or when hand empties
   if (delayDrawMs > 0){
     setTimeout(()=>{ drawCards(state.currentPlayer, 3); }, delayDrawMs);
   } else {
     drawCards(state.currentPlayer, 3);
   }
-  document.getElementById('endTurnBtn').disabled = false;
+  // Enable end turn button once cards are all landed (poll simple)
+  setTimeout(()=>{ state.endTurnEnabled = true; }, delayDrawMs + 900);
   // Clear legacy hand container (no longer used)
   const handDiv = document.getElementById('hand'); if (handDiv) handDiv.innerHTML='';
   updateHandUI(); // no-op kept for compatibility
@@ -35,7 +37,7 @@ function startTurn(options={}){
   if (first) state.selectedPieceId = first.id;
 }
 
-function endTurn(){
+export function endTurn(){
   const pdata = state.playerData[state.currentPlayer];
   const visibleCards = pdata ? [...pdata.hand] : [];
   if (!pdata || (visibleCards.length === 0 && state.pendingHandAdditions.length === 0)){
@@ -78,7 +80,7 @@ function endTurn(){
 async function init(){
   initBoard();
   attachInput();
-  document.getElementById('endTurnBtn').addEventListener('click', endTurn);
+  // Remove DOM button usage; kept element in HTML but inert now (optional: could hide)
   try {
     await loadMap('maps/irregular_islands.json');
   } catch (e) { console.warn('Map load failed, continuing with empty board', e); }
@@ -163,7 +165,18 @@ function setupStartScreen(){
       state.playerConfig[pid].avatar = data.get(`p${pid}Avatar`) || state.playerConfig[pid].avatar;
     }
     el.classList.add('hidden');
-    // Delay card draw slightly so menu fade out finishes before animation
-    startTurn({ delayDrawMs: 500 });
+    if (state._fullResetOnStart){
+      // Re-initialize board & pieces to ensure clean state
+      (async ()=>{
+        try { await loadMap('maps/irregular_islands.json'); } catch(e){ console.warn('Map reload failed', e); }
+        state.turn = 1; state.currentPlayer = 1; state.selectedPieceId = null; state.winner = null; state.winButtons = [];
+        state.playerData = {}; state.handLayout=[]; state.handLayoutDirty=true; state.pendingHandAdditions=[]; state.cardAnimations=[]; state.animatingCards.clear();
+        state._fullResetOnStart = false;
+        startTurn({ delayDrawMs: 500 });
+      })();
+    } else {
+      // Delay card draw slightly so menu fade out finishes before animation
+      startTurn({ delayDrawMs: 500 });
+    }
   });
 }

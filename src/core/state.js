@@ -28,4 +28,9 @@ export const state = {
   pilePositions: { draw:{x:0,y:0}, discard:{x:0,y:0} },
   animatingCards: new Set(),
   pendingHandAdditions: [], // cards drawn but not yet landed
+  endTurnEnabled: true,
+  endTurnButton: { x: 0, y: 0, w: 140, h: 44 },
+  winButtons: [], // populated when winner exists [{id,label,x,y,w,h}]
+  hoverControl: null, // 'endTurn' or 'win:play-again' etc
+  _fullResetOnStart: false,
 };
