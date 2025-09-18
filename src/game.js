@@ -159,8 +159,9 @@ async function init(){
   initMusicSystem();
   const loadingEl = document.getElementById('loadingScreen');
   // Map + textures sequentially; could parallelize but keep progress semantics simple.
-  // Load a default map first just for background before user picks (can be replaced at Start)
-  try { await loadMap('maps/irregular_islands.json'); } catch (e) { console.warn('Map load failed, continuing with empty board', e); }
+  try {
+    await loadMap('maps/irregular_islands.json');
+  } catch (e) { console.warn('Map load failed, continuing with empty board', e); }
   try {
     await loadAssetsWithProgress();
   } catch(e){ console.warn('Texture load issue', e); }
@@ -237,110 +238,7 @@ function setupStartScreen(){
     }
   }
   buildColorPickers();
-  // --- New Multi-Step Logic ---
   const form = document.getElementById('playerSetupForm');
-  const step1 = document.getElementById('stepPlayers');
-  const step2 = document.getElementById('stepMaps');
-  const pill1 = el.querySelector('[data-step-pill="1"]');
-  const pill2 = el.querySelector('[data-step-pill="2"]');
-  const btnNext = document.getElementById('toStep2Btn');
-  const btnBack = document.getElementById('backToStep1Btn');
-  const mapGrid = document.getElementById('mapGrid');
-  const mapEmptyHint = document.getElementById('mapEmptyHint');
-  const selectedMapInput = document.getElementById('selectedMapValue');
-
-  function setStep(n){
-    [step1, step2].forEach(s => s.classList.remove('active'));
-    [pill1, pill2].forEach(p => p.classList.remove('active'));
-    if (n===1){ step1.classList.add('active'); pill1.classList.add('active'); }
-    else { step2.classList.add('active'); pill2.classList.add('active'); }
-  }
-  btnNext?.addEventListener('click', () => setStep(2));
-  btnBack?.addEventListener('click', () => setStep(1));
-  pill1?.addEventListener('click', () => setStep(1));
-  pill2?.addEventListener('click', () => setStep(2));
-
-  // List available maps (static list for now; could fetch directory)
-  const availableMaps = [
-    { path:'maps/irregular_islands.json', label:'Irregular Islands' },
-    { path:'maps/desert_storm.json', label:'Desert Storm' }
-  ];
-  buildMapCards(availableMaps);
-
-  function buildMapCards(list){
-    mapGrid.innerHTML='';
-    if (!list.length){ mapEmptyHint.style.display='block'; return; }
-    mapEmptyHint.style.display='none';
-    list.forEach(m => {
-      const card = document.createElement('div'); card.className='map-card'; card.dataset.path = m.path;
-      const thumb = document.createElement('div'); thumb.className='map-thumb';
-      // Small offscreen render of layout characters -> canvas
-      buildMapThumbnail(m.path, thumb);
-      const meta = document.createElement('div'); meta.className='map-meta';
-      const nameEl = document.createElement('div'); nameEl.className='map-name'; nameEl.textContent = m.label;
-      const sizeEl = document.createElement('div'); sizeEl.className='map-size'; sizeEl.textContent = 'Loading…';
-      meta.appendChild(nameEl); meta.appendChild(sizeEl);
-      card.appendChild(thumb); card.appendChild(meta);
-      card.addEventListener('click', () => {
-        selectedMapInput.value = m.path;
-        mapGrid.querySelectorAll('.map-card').forEach(c=>c.classList.remove('selected'));
-        card.classList.add('selected');
-      });
-      mapGrid.appendChild(card);
-      // Fetch map to compute size info (q,r extents)
-      fetch(m.path, { cache:'no-cache' }).then(r=>r.json()).then(j=>{
-        const layout = j.layout || []; let cells=0; layout.forEach(line=>cells += (line.match(/[^\s\.]/g)||[]).length);
-        sizeEl.textContent = `${cells} tiles`;
-      }).catch(()=> sizeEl.textContent='?');
-    });
-    // Select first by default if none chosen
-    if (!mapGrid.querySelector('.map-card.selected')){
-      const first = mapGrid.querySelector('.map-card'); if (first){ first.classList.add('selected'); selectedMapInput.value = first.dataset.path; }
-    }
-  }
-
-  function buildMapThumbnail(path, container){
-    fetch(path, { cache:'no-cache' }).then(r=>r.json()).then(j => {
-      if (!j.layout){ container.textContent='(no preview)'; return; }
-      const cvs = document.createElement('canvas');
-      const rows = j.layout.length; const cols = Math.max(...j.layout.map(l=>l.length));
-      const scale = 6; // small tile size
-      cvs.width = cols * scale + 4; cvs.height = rows * (scale*0.84) + 4;
-      const c = cvs.getContext('2d'); c.fillStyle='#0f1720'; c.fillRect(0,0,cvs.width,cvs.height);
-      const legend = j.legend || {};
-      for (let r=0;r<rows;r++){
-        const line = j.layout[r];
-        for (let col=0; col<line.length; col++){
-          const ch = line[col]; if (ch===' '||ch==='.'||ch==='\t') continue;
-          const entry = legend[ch];
-          let color = '#334155';
-            if (entry && entry.tex){
-              if (/grass/.test(entry.tex)) color='#166534';
-              else if (/sand/.test(entry.tex)) color='#92400e';
-              else if (/water/.test(entry.tex)) color='#0e4f6e';
-              else if (/mountain/.test(entry.tex)) color='#4b5563';
-              else if (/diamond/.test(entry.tex)) color='#0891b2';
-            }
-          const x = col*scale + (r%2 ? scale/2 : 0) + 2;
-          const y = r * (scale*0.84) + 2;
-          // Simple hex-ish blob
-          c.beginPath();
-          const rad = scale/2;
-          c.moveTo(x+rad*0.2,y);
-          c.lineTo(x+rad*0.8,y);
-          c.lineTo(x+rad,y+rad*0.5);
-          c.lineTo(x+rad*0.8,y+rad);
-          c.lineTo(x+rad*0.2,y+rad);
-          c.lineTo(x,y+rad*0.5);
-          c.closePath();
-          c.fillStyle=color; c.fill();
-        }
-      }
-      container.innerHTML='';
-      container.appendChild(cvs);
-    }).catch(()=>{ container.textContent='(error)'; });
-  }
-
   form.addEventListener('submit', e => {
     e.preventDefault();
     const data = new FormData(form);
@@ -348,16 +246,19 @@ function setupStartScreen(){
       state.playerConfig[pid].color = data.get(`p${pid}Color`) || state.playerConfig[pid].color;
       state.playerConfig[pid].avatar = data.get(`p${pid}Avatar`) || state.playerConfig[pid].avatar;
     }
-    const mapPath = data.get('selectedMap') || 'maps/irregular_islands.json';
-    (async ()=>{
-      try { await loadMap(mapPath); } catch(e){ console.warn('Selected map load failed, keeping previous', e); }
-      el.classList.add('hidden');
-      if (state._fullResetOnStart){
+    el.classList.add('hidden');
+    if (state._fullResetOnStart){
+      // Re-initialize board & pieces to ensure clean state
+      (async ()=>{
+        try { await loadMap('maps/irregular_islands.json'); } catch(e){ console.warn('Map reload failed', e); }
         state.turn = 1; state.currentPlayer = 1; state.selectedPieceId = null; state.winner = null; state.winButtons = [];
         state.playerData = {}; state.handLayout=[]; state.handLayoutDirty=true; state.pendingHandAdditions=[]; state.cardAnimations=[]; state.animatingCards.clear();
         state._fullResetOnStart = false;
-      }
+        startTurn({ delayDrawMs: 500 });
+      })();
+    } else {
+      // Delay card draw slightly so menu fade out finishes before animation
       startTurn({ delayDrawMs: 500 });
-    })();
+    }
   });
 }

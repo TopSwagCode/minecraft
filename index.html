@@ -19,46 +19,28 @@
 
 	<div id="startScreen" class="start-screen" aria-modal="true" role="dialog">
 		<div class="start-panel">
-			<div class="steps-header">
-				<div class="step-pill active" data-step-pill="1">1 Players</div>
-				<div class="step-pill" data-step-pill="2">2 Map</div>
-			</div>
+			<h2>Start Game</h2>
 			<form id="playerSetupForm">
-				<!-- Step 1: Player Setup -->
-				<div class="step-content active" data-step="1" id="stepPlayers">
-					<h2 style="margin:.2rem 0 .7rem; text-align:center;">Players</h2>
-					<div class="players-grid">
-						<div class="player-config" data-player="1">
-							<h3>Player 1</h3>
-							<input type="hidden" name="p1Color" id="p1ColorValue" value="#3b82f6" />
-							<div class="avatar-picker-label">Avatar</div>
-							<div class="avatar-list" id="p1AvatarList"></div>
-							<input type="hidden" name="p1Avatar" id="p1AvatarValue" />
-						</div>
-						<div class="player-config" data-player="2">
-							<h3>Player 2</h3>
-							<input type="hidden" name="p2Color" id="p2ColorValue" value="#ef4444" />
-							<div class="avatar-picker-label">Avatar</div>
-							<div class="avatar-list" id="p2AvatarList"></div>
-							<input type="hidden" name="p2Avatar" id="p2AvatarValue" />
-						</div>
-					</div>
-					<div class="step-actions">
-						<button type="button" id="toStep2Btn">Next »</button>
-					</div>
+				<div class="player-config" data-player="1">
+					<h3>Player 1</h3>
+					<!--<div class="color-picker-label">Color</div>
+					<div class="color-list" id="p1ColorList"></div>-->
+					<input type="hidden" name="p1Color" id="p1ColorValue" value="#3b82f6" />
+					<div class="avatar-picker-label">Avatar</div>
+					<div class="avatar-list" id="p1AvatarList"></div>
+					<input type="hidden" name="p1Avatar" id="p1AvatarValue" />
 				</div>
-				<!-- Step 2: Map Selection -->
-				<div class="step-content" data-step="2" id="stepMaps">
-					<h2 style="margin:.2rem 0 .4rem; text-align:center;">Select Map</h2>
-					<p style="margin:0; font-size:.65rem; text-align:center; color:#93a6bb; letter-spacing:.5px;">Choose a map to play. Preview shows terrain layout.</p>
-					<hr class="divider" />
-					<div class="map-grid" id="mapGrid"></div>
-					<div class="empty-hint" id="mapEmptyHint" style="display:none;">No maps found.</div>
-					<input type="hidden" name="selectedMap" id="selectedMapValue" value="maps/irregular_islands.json" />
-					<div class="step-actions">
-						<button type="button" id="backToStep1Btn">« Back</button>
-						<button type="submit" id="startGameBtn">Start Game</button>
-					</div>
+				<div class="player-config" data-player="2">
+					<h3>Player 2</h3>
+					<!--<div class="color-picker-label">Color</div>
+					<div class="color-list" id="p2ColorList"></div>-->
+					<input type="hidden" name="p2Color" id="p2ColorValue" value="#ef4444" />
+					<div class="avatar-picker-label">Avatar</div>
+					<div class="avatar-list" id="p2AvatarList"></div>
+					<input type="hidden" name="p2Avatar" id="p2AvatarValue" />
+				</div>
+				<div class="actions">
+					<button type="submit" id="startGameBtn">Start</button>
 				</div>
 			</form>
 		</div>
