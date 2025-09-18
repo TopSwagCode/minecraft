@@ -19,16 +19,22 @@ export function getContext(){ return ctx; }
 export function axialToPixel(q,r){
   const cq = q - (state.boardShift?.q || 0);
   const cr = r - (state.boardShift?.r || 0);
+  const baseX = HEX_SIZE * Math.sqrt(3) * (cq + cr / 2);
+  const baseY = HEX_SIZE * 1.5 * cr;
   const cx = canvas.width / 2; const cy = canvas.height / 2;
-  const x = HEX_SIZE * Math.sqrt(3) * (cq + cr / 2) + cx + state.camera.x;
-  const y = HEX_SIZE * 1.5 * cr + cy + state.camera.y;
+  const z = state.zoom || 1;
+  // Apply zoom around canvas center, then camera pan after scaling
+  const x = cx + (baseX + state.camera.x) * z;
+  const y = cy + (baseY + state.camera.y) * z;
   return { x,y };
 }
 
 export function pixelToAxial(x,y){
   const cx = canvas.width/2; const cy = canvas.height/2;
-  // Inverse of axialToPixel: remove center and camera translation
-  const px = x - cx - state.camera.x; const py = y - cy - state.camera.y;
+  const z = state.zoom || 1;
+  // Undo zoom and center translation, then camera pan
+  const px = (x - cx)/z - state.camera.x;
+  const py = (y - cy)/z - state.camera.y;
   const qLocal = (Math.sqrt(3)/3 * px - 1/3 * py)/HEX_SIZE;
   const rLocal = (2/3 * py)/HEX_SIZE;
   return { q: qLocal + (state.boardShift?.q || 0), r: rLocal + (state.boardShift?.r || 0) };
@@ -37,6 +43,7 @@ export function pixelToAxial(x,y){
 export function drawBoard(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawStaticBackground();
+  // Draw hex grid (scaled)
   for (const h of state.board.values()) drawHex(h.q,h.r);
   if (state.selectedPieceId != null){
     const piece = state.pieces.find(p => p.id === state.selectedPieceId);
@@ -60,7 +67,7 @@ export function drawBoard(){
     }
   }
   if (state.previewPath && state.previewPath.length>1){ drawPreviewPath(state.previewPath); }
-  for (const p of state.pieces) drawPiece(ctx,p,COLORS,HEX_SIZE);
+  for (const p of state.pieces) drawPiece(ctx,p,COLORS,HEX_SIZE * (state.zoom || 1));
   // Celebration particles (if winner)
   drawDiamondRain(ctx);
   //drawHUD(); Maybe delete HUD or have as debug option.
@@ -204,32 +211,35 @@ function drawPreviewPath(path){
   ctx.strokeStyle=grad; ctx.beginPath();
   for (let i=0;i<path.length;i++){ const {x,y} = axialToPixel(path[i].q,path[i].r); if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
   ctx.stroke();
-  for (let i=1;i<path.length;i++){ const {x,y}=axialToPixel(path[i].q,path[i].r); ctx.beginPath(); ctx.fillStyle='#ffd166'; ctx.arc(x,y,6,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#553300'; ctx.font='10px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(String(i),x,y+0.5);} 
+  const z = state.zoom || 1;
+  for (let i=1;i<path.length;i++){ const {x,y}=axialToPixel(path[i].q,path[i].r); ctx.beginPath(); ctx.fillStyle='#ffd166'; ctx.arc(x,y,6*z,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#553300'; ctx.font= `${10*z}px system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(String(i),x,y+0.5);} 
   ctx.restore();
 }
 
 function drawHex(q,r, opts={}){
   const { x,y } = axialToPixel(q,r);
-  const corners=[]; for (let i=0;i<6;i++){ const angle = Math.PI/180*(60*i - 30); const cx = x + HEX_SIZE*Math.cos(angle); const cy = y + HEX_SIZE*Math.sin(angle); corners.push({x:cx,y:cy}); }
+  const z = state.zoom || 1;
+  const scaledSize = HEX_SIZE * z;
+  const corners=[]; for (let i=0;i<6;i++){ const angle = Math.PI/180*(60*i - 30); const cx = x + scaledSize*Math.cos(angle); const cy = y + scaledSize*Math.sin(angle); corners.push({x:cx,y:cy}); }
   ctx.beginPath(); ctx.moveTo(corners[0].x,corners[0].y); for (let i=1;i<6;i++) ctx.lineTo(corners[i].x,corners[i].y); ctx.closePath();
   if (state.texturesReady){
     const texName = state.hexTextureAssignments.get(key({q,r}));
     let img = null;
     if (window.TextureRegistry && window.TextureRegistry.images){ img = texName && window.TextureRegistry.images.get(texName); }
-    if (img){ ctx.save(); ctx.clip(); const size = HEX_SIZE*2; ctx.drawImage(img,x-HEX_SIZE,y-HEX_SIZE,size,size); ctx.restore(); }
+    if (img){ ctx.save(); ctx.clip(); const size = scaledSize*2; ctx.drawImage(img,x-scaledSize,y-scaledSize,size,size); ctx.restore(); }
     else { ctx.fillStyle = opts.fill || COLORS.boardFill; ctx.fill(); }
   } else { ctx.fillStyle = opts.fill || COLORS.boardFill; ctx.fill(); }
   // Diamond special highlight overlay ring
   const terr = state.hexTerrain.get(key({q,r}));
   if (terr === 'diamond'){
     ctx.save();
-    ctx.lineWidth = 4; ctx.strokeStyle = '#00e5ff';
+    ctx.lineWidth = 4 * z; ctx.strokeStyle = '#00e5ff';
     ctx.stroke();
     ctx.globalAlpha = 0.22; ctx.fillStyle='#00e5ff';
     ctx.beginPath(); ctx.moveTo(corners[0].x,corners[0].y); for (let i=1;i<6;i++) ctx.lineTo(corners[i].x,corners[i].y); ctx.closePath(); ctx.fill();
     ctx.globalAlpha = 1; ctx.restore();
   }
-  if (opts.stroke !== false){ ctx.strokeStyle = opts.stroke || COLORS.gridLine; ctx.lineWidth = opts.lineWidth || 1.2; ctx.stroke(); }
+  if (opts.stroke !== false){ ctx.strokeStyle = opts.stroke || COLORS.gridLine; ctx.lineWidth = (opts.lineWidth || 1.2) * z; ctx.stroke(); }
   if (opts.overlay){ ctx.fillStyle = opts.overlay.color; ctx.globalAlpha = opts.overlay.alpha ?? 0.35; ctx.beginPath(); ctx.moveTo(corners[0].x,corners[0].y); for (let i=1;i<6;i++) ctx.lineTo(corners[i].x,corners[i].y); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1; }
 }
 

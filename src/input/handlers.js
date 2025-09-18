@@ -25,10 +25,12 @@ export function attachInput(){
   canvas.addEventListener('touchmove', onTouchMove, { passive:false });
   canvas.addEventListener('touchend', onTouchEnd, { passive:false });
   canvas.addEventListener('touchcancel', onTouchCancel, { passive:false });
+  canvas.addEventListener('wheel', onWheel, { passive:false });
 }
 
 let dragState = { active:false, startX:0, startY:0, camX:0, camY:0, button:0 };
 let touchState = { tracking:false, moved:false, startX:0, startY:0, lastX:0, lastY:0, camX:0, camY:0, lastTapTime:0, longPress:false, longPressTimer:null };
+let pinchState = { active:false, startDist:0, startZoom:1, centerX:0, centerY:0 };
 const TAP_MOVE_TOLERANCE = 14; // px tolerance for distinguishing tap vs pan
 
 function isPanningTrigger(evt){
@@ -49,24 +51,43 @@ function onMouseUp(evt){
 function onDragMove(evt){
   if (!dragState.active) return;
   const dx = evt.clientX - dragState.startX; const dy = evt.clientY - dragState.startY;
-  state.camera.x = dragState.camX + dx; state.camera.y = dragState.camY + dy;
+  const z = state.zoom || 1;
+  state.camera.x = dragState.camX + dx / z;
+  state.camera.y = dragState.camY + dy / z;
 }
 
 // --- Touch Support ---
 function onTouchStart(e){
-  if (e.touches.length !== 1) return; // ignore multi-touch (future zoom)
-  const t = e.touches[0];
-  touchState.tracking = true; touchState.moved = false; touchState.longPress=false;
-  touchState.startX = t.clientX; touchState.startY = t.clientY; touchState.lastX = t.clientX; touchState.lastY = t.clientY;
-  touchState.camX = state.camera.x; touchState.camY = state.camera.y;
-  // Long press to enter panning mode explicitly
-  clearTimeout(touchState.longPressTimer);
-  touchState.longPressTimer = setTimeout(()=>{ touchState.longPress = true; }, 400);
-  // Prevent synthetic mouse events so we only rely on touch logic
+  if (e.touches.length === 1){
+    const t = e.touches[0];
+    pinchState.active = false;
+    touchState.tracking = true; touchState.moved = false; touchState.longPress=false;
+    touchState.startX = t.clientX; touchState.startY = t.clientY; touchState.lastX = t.clientX; touchState.lastY = t.clientY;
+    touchState.camX = state.camera.x; touchState.camY = state.camera.y;
+    clearTimeout(touchState.longPressTimer);
+    touchState.longPressTimer = setTimeout(()=>{ touchState.longPress = true; }, 400);
+  } else if (e.touches.length === 2){
+    touchState.tracking = false; clearTimeout(touchState.longPressTimer);
+    const [a,b] = e.touches;
+    pinchState.active = true;
+    pinchState.startDist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+    pinchState.startZoom = state.zoom;
+    pinchState.centerX = (a.clientX + b.clientX)/2;
+    pinchState.centerY = (a.clientY + b.clientY)/2;
+  }
   e.preventDefault();
 }
 
 function onTouchMove(e){
+  if (pinchState.active && e.touches.length === 2){
+    const [a,b] = e.touches;
+    const newDist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+    const scale = newDist / pinchState.startDist;
+    const targetZoom = clampZoom(pinchState.startZoom * scale);
+    applyZoomAtClientPoint(targetZoom, pinchState.centerX, pinchState.centerY);
+    e.preventDefault();
+    return;
+  }
   if (!touchState.tracking) return;
   const t = e.touches[0];
   touchState.lastX = t.clientX; touchState.lastY = t.clientY;
@@ -75,12 +96,11 @@ function onTouchMove(e){
   if (dist2 > TAP_MOVE_TOLERANCE*TAP_MOVE_TOLERANCE){
     touchState.moved = true;
   }
-  // If moved enough or longPress activated: treat as pan
   if (touchState.moved || touchState.longPress){
-    state.camera.x = touchState.camX + dx; state.camera.y = touchState.camY + dy;
+    state.camera.x = touchState.camX + dx / (state.zoom||1);
+    state.camera.y = touchState.camY + dy / (state.zoom||1);
     e.preventDefault();
   } else {
-    // Hover-like preview while finger is still (simulate onMove)
     const { x: localX, y: localY } = toCanvasCoords(t.clientX, t.clientY);
     simulateHover(localX, localY);
   }
@@ -88,13 +108,15 @@ function onTouchMove(e){
 
 function onTouchEnd(e){
   clearTimeout(touchState.longPressTimer);
+  if (pinchState.active){
+    if (e.touches.length < 2) pinchState.active = false;
+  }
   if (!touchState.tracking) return;
   const dx = touchState.lastX - touchState.startX; const dy = touchState.lastY - touchState.startY;
   const movedEnough = (dx*dx + dy*dy) > (TAP_MOVE_TOLERANCE*TAP_MOVE_TOLERANCE);
   const wasPan = (movedEnough || touchState.longPress);
   touchState.tracking = false;
   if (!wasPan){
-    // Treat as tap -> click equivalent using final coordinates
     const { x, y } = toCanvasCoords(touchState.lastX, touchState.lastY);
     simulateClick(x,y);
   }
@@ -222,4 +244,40 @@ function toCanvasCoords(clientX, clientY){
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
   return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+}
+
+// --- Zoom Helpers ---
+function clampZoom(z){ return Math.min(state.maxZoom || 2.2, Math.max(state.minZoom || 0.5, z)); }
+
+function applyZoomAtClientPoint(newZoom, clientX, clientY){
+  const canvas = getCanvas();
+  const rect = canvas.getBoundingClientRect();
+  const before = screenPointToWorld(clientX, clientY, rect);
+  state.zoom = newZoom;
+  const after = screenPointToWorld(clientX, clientY, rect);
+  state.camera.x += before.worldX - after.worldX;
+  state.camera.y += before.worldY - after.worldY;
+}
+
+function screenPointToWorld(clientX, clientY, rect){
+  const canvas = getCanvas();
+  if (!rect) rect = canvas.getBoundingClientRect();
+  const x = (clientX - rect.left) * (canvas.width/rect.width);
+  const y = (clientY - rect.top) * (canvas.height/rect.height);
+  const z = state.zoom || 1;
+  const cx = canvas.width/2; const cy = canvas.height/2;
+  const worldX = (x - cx)/z - state.camera.x;
+  const worldY = (y - cy)/z - state.camera.y;
+  return { worldX, worldY };
+}
+
+function onWheel(e){
+  if (e.ctrlKey || e.metaKey){
+    return; // allow browser pinch-zoom for page if user intends that
+  }
+  const delta = -e.deltaY; // wheel up -> zoom in
+  const zoomFactor = Math.exp(delta * 0.001);
+  const target = clampZoom((state.zoom || 1) * zoomFactor);
+  applyZoomAtClientPoint(target, e.clientX, e.clientY);
+  e.preventDefault();
 }
