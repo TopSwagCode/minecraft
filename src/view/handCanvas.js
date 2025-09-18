@@ -1,5 +1,6 @@
 import { state } from '../core/state.js';
 import { COLORS } from '../core/constants.js';
+import { TextureRegistry } from '../../textures.js';
 
 // Layout constants
 const CARD_W = 90;
@@ -61,21 +62,42 @@ export function drawHand(ctx, canvas){
   ctx.textBaseline = 'middle';
   pdata.hand.forEach(card => {
     const lay = state.handLayout.find(l => l.cardId === card.id); if (!lay) return;
-    const [c0,c1] = cardColor(card.terrain);
-    const grad = ctx.createLinearGradient(lay.x, lay.y, lay.x+lay.w, lay.y+lay.h);
-    grad.addColorStop(0,c0); grad.addColorStop(1,c1);
-    ctx.fillStyle = grad;
+    const texKey = 'hello-' + card.terrain; // expected naming convention
+    const img = TextureRegistry && TextureRegistry.images && TextureRegistry.images.get(texKey);
+    ctx.save();
+    // Clip to rounded rect
     roundedRect(ctx, lay.x, lay.y, lay.w, lay.h, RADIUS);
-    ctx.fill();
+    ctx.clip();
+    if (img){
+      // Cover-fit the image inside card area
+      const iw = img.width, ih = img.height;
+      const scale = Math.max(lay.w/iw, lay.h/ih);
+      const dw = iw * scale; const dh = ih * scale;
+      const dx = lay.x + (lay.w - dw)/2; const dy = lay.y + (lay.h - dh)/2;
+      ctx.drawImage(img, dx, dy, dw, dh);
+      // Subtle dark-to-transparent gradient overlay for text readability
+      const overlay = ctx.createLinearGradient(lay.x, lay.y, lay.x, lay.y + lay.h);
+      overlay.addColorStop(0, 'rgba(0,0,0,0.15)');
+      overlay.addColorStop(1, 'rgba(0,0,0,0.55)');
+      ctx.fillStyle = overlay; ctx.fillRect(lay.x, lay.y, lay.w, lay.h);
+    } else {
+      // Fallback gradient (image not yet loaded)
+      const [c0,c1] = cardColor(card.terrain);
+      const grad = ctx.createLinearGradient(lay.x, lay.y, lay.x+lay.w, lay.y+lay.h);
+      grad.addColorStop(0,c0); grad.addColorStop(1,c1);
+      ctx.fillStyle = grad; ctx.fill();
+    }
+    ctx.restore();
+    // Border / selection outline
     ctx.lineWidth = (pdata.selectedCard === card.id)?3:1.2;
     ctx.strokeStyle = (pdata.selectedCard === card.id)?'#fff':'#000';
-    ctx.stroke();
+    roundedRect(ctx, lay.x, lay.y, lay.w, lay.h, RADIUS); ctx.stroke();
     if (state.hoverCardId === card.id){
-      ctx.fillStyle='rgba(255,255,255,0.07)';
-      roundedRect(ctx, lay.x, lay.y, lay.w, lay.h, RADIUS); ctx.fill();
+      ctx.save(); ctx.fillStyle='rgba(255,255,255,0.07)';
+      roundedRect(ctx, lay.x, lay.y, lay.w, lay.h, RADIUS); ctx.fill(); ctx.restore();
     }
-    // Text
-    ctx.fillStyle = '#fff'; ctx.font = '600 13px system-ui';
+    // Text labels
+    ctx.fillStyle = '#fff'; ctx.font = '600 13px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.fillText(card.terrain, lay.x + lay.w/2, lay.y + lay.h/2 - 6);
     ctx.fillStyle = '#ffd166'; ctx.font = '10px system-ui';
     ctx.fillText('r'+card.range, lay.x + lay.w/2, lay.y + lay.h/2 + 10);
@@ -165,15 +187,34 @@ function drawPile(ctx,x,y,type,count){
 function drawAnimatedCard(ctx, card, x, y, prog, anim){
   ctx.save();
   const w = CARD_W, h = CARD_H;
-  const [c0,c1] = cardColor(card.terrain);
-  const grad = ctx.createLinearGradient(x,y,x+w,y+h);
-  grad.addColorStop(0,c0); grad.addColorStop(1,c1);
-  ctx.globalAlpha = 0.25 + 0.75*prog;
-  ctx.fillStyle = grad; roundedRect(ctx,x,y,w,h,10); ctx.fill();
-  ctx.lineWidth=1.4; ctx.strokeStyle='#000'; ctx.stroke();
-  if (anim && anim.rotation){
-    // Re-draw with rotation (optional) - simple approach: overlay border rotated
+  const texKey = 'hello-' + card.terrain;
+  const img = TextureRegistry && TextureRegistry.images && TextureRegistry.images.get(texKey);
+  const alpha = 0.25 + 0.75*prog;
+  ctx.globalAlpha = alpha;
+  // Background (image or gradient)
+  roundedRect(ctx,x,y,w,h,10); ctx.clip();
+  if (img){
+    const iw = img.width, ih = img.height;
+    const scale = Math.max(w/iw, h/ih);
+    const dw = iw * scale; const dh = ih * scale;
+    const dx = x + (w - dw)/2; const dy = y + (h - dh)/2;
+    ctx.drawImage(img, dx, dy, dw, dh);
+    // Dark overlay scaling with (1-prog) for slight fade-in
+    const overlay = ctx.createLinearGradient(x,y,x,y+h);
+    overlay.addColorStop(0,'rgba(0,0,0,'+(0.25*(1-prog)).toFixed(3)+')');
+    overlay.addColorStop(1,'rgba(0,0,0,'+(0.55*(1-prog)).toFixed(3)+')');
+    ctx.fillStyle = overlay; ctx.fillRect(x,y,w,h);
+  } else {
+    const [c0,c1] = cardColor(card.terrain);
+    const grad = ctx.createLinearGradient(x,y,x+w,y+h);
+    grad.addColorStop(0,c0); grad.addColorStop(1,c1);
+    ctx.fillStyle = grad; ctx.fill();
   }
+  ctx.restore();
+  // Border
+  ctx.save();
+  ctx.lineWidth=1.4; ctx.strokeStyle='#000';
+  roundedRect(ctx,x,y,w,h,10); ctx.stroke();
   ctx.globalAlpha=1; ctx.fillStyle='#fff'; ctx.font='600 13px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(card.terrain, x+w/2, y+h/2 - 6);
   ctx.fillStyle='#ffd166'; ctx.font='10px system-ui'; ctx.fillText('r'+card.range, x+w/2, y+h/2 + 10);
