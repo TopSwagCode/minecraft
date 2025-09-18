@@ -63,7 +63,7 @@ export function drawBoard(){
   for (const p of state.pieces) drawPiece(ctx,p,COLORS,HEX_SIZE);
   // Celebration particles (if winner)
   drawDiamondRain(ctx);
-  drawHUD();
+  //drawHUD(); Maybe delete HUD or have as debug option.
   drawMusicButton();
   drawHand(ctx, canvas);
   if (state.winner){ drawWinOverlay(state.winner); }
