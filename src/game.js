@@ -5,6 +5,7 @@ import { startLoop, onUpdate, onRender } from './engine/loop.js';
 import { updateAnimations } from './systems/animation.js';
 import { updateDiamondRain } from './systems/diamondRain.js';
 import { initBoard, drawBoard } from './view/board.js';
+import { updateCardAnimations } from './view/handCanvas.js';
 import { loadMap } from './maps/loader.js';
 import { loadAllTextures, TextureRegistry } from '../textures.js';
 import { attachInput } from './input/handlers.js';
@@ -14,14 +15,21 @@ import { classifyTerrain } from './utils/terrain.js';
 // Temporary: map loading & texture assignment kept minimal here
 function assignTextures(){ /* TODO: move texture rules into dedicated module */ }
 
-function startTurn(){
+function startTurn(options={}){
+  const { delayDrawMs = 0 } = options;
   state.selectedPieceId = null;
   ensurePlayerState(state.currentPlayer);
   const pdata = state.playerData[state.currentPlayer];
-  pdata.hand = []; pdata.selectedCard = null;
-  drawCards(state.currentPlayer, 3);
+  pdata.hand = []; pdata.selectedCard = null; state.handLayoutDirty = true;
+  if (delayDrawMs > 0){
+    setTimeout(()=>{ drawCards(state.currentPlayer, 3); }, delayDrawMs);
+  } else {
+    drawCards(state.currentPlayer, 3);
+  }
   document.getElementById('endTurnBtn').disabled = false;
-  updateHandUI();
+  // Clear legacy hand container (no longer used)
+  const handDiv = document.getElementById('hand'); if (handDiv) handDiv.innerHTML='';
+  updateHandUI(); // no-op kept for compatibility
   // Auto-select the first available piece for the active player
   const first = state.pieces.find(p => p.player === state.currentPlayer);
   if (first) state.selectedPieceId = first.id;
@@ -29,9 +37,42 @@ function startTurn(){
 
 function endTurn(){
   const pdata = state.playerData[state.currentPlayer];
-  if (pdata){ pdata.discard.push(...pdata.hand); pdata.hand=[]; pdata.selectedCard=null; }
-  state.currentPlayer = state.currentPlayer === 1 ? 2 : 1;
-  state.turn++; startTurn();
+  const visibleCards = pdata ? [...pdata.hand] : [];
+  if (!pdata || (visibleCards.length === 0 && state.pendingHandAdditions.length === 0)){
+    state.currentPlayer = state.currentPlayer === 1 ? 2 : 1; state.turn++; startTurn({ delayDrawMs: 400 }); return;
+  }
+  // Include any pending (in-flight draw) cards: treat them as if they were in hand for discard
+  const allCards = [...visibleCards, ...state.pendingHandAdditions];
+  // Snapshot starting positions before clearing hand
+  const canvas = document.getElementById('board');
+  const startPositions = new Map();
+  for (const c of visibleCards){
+    const lay = state.handLayout.find(l => l.cardId === c.id);
+    if (lay) startPositions.set(c.id, { x: lay.x, y: lay.y });
+  }
+  // Fallback for any pending cards (approx center)
+  const fallback = { x: (canvas ? canvas.width/2 : 400) - 45, y: ((canvas ? canvas.height : 700) - 70) };
+  // Immediately clear hand so cards are not rendered in two places
+  pdata.hand = []; pdata.selectedCard = null; state.pendingHandAdditions = []; state.handLayoutDirty = true;
+  const discardPos = state.pilePositions?.discard || { x: (canvas ? canvas.width - 100 : 800), y: (canvas ? canvas.height - 70 : 600) };
+  const total = allCards.length;
+  let completed = 0; const maxArc = 60;
+  allCards.forEach((card, idx) => {
+    const from = startPositions.get(card.id) || fallback;
+    const spread = Math.min(70, 20 * total);
+    const angle = (-spread/2) + (spread/(total-1||1))*idx;
+    const to = { x: discardPos.x + (idx-total/2)*2, y: discardPos.y + (idx-total/2)*1.5 };
+    state.cardAnimations.push({ id: card.id+'-discard-'+performance.now(), type:'discard', card, from, to, t:0, duration:420, startDelay: idx*70, arcHeight: maxArc * (0.3 + 0.7*Math.abs((idx-(total-1)/2)/((total-1)/2||1))), rotation: angle * Math.PI/180, onComplete: () => {
+      pdata.discard.push(card);
+      completed++;
+      if (completed === total){
+        setTimeout(()=>{
+          state.currentPlayer = state.currentPlayer === 1 ? 2 : 1;
+          state.turn++; startTurn({ delayDrawMs: 450 });
+        }, 180);
+      }
+    }});
+  });
 }
 
 async function init(){
@@ -44,7 +85,7 @@ async function init(){
   // Load textures before first draw so board renders with images
   try { await loadAllTextures(); state.texturesReady = true; } catch(e){ console.warn('Texture load issue', e); }
   setupStartScreen();
-  onUpdate(dt => { updateAnimations(dt); updateDiamondRain(dt, document.getElementById('board')); });
+  onUpdate(dt => { updateAnimations(dt); updateCardAnimations(dt); updateDiamondRain(dt, document.getElementById('board')); });
   onRender(() => drawBoard());
   startLoop();
 }
@@ -53,7 +94,7 @@ window.addEventListener('DOMContentLoaded', init);
 
 function setupStartScreen(){
   const el = document.getElementById('startScreen');
-  if (!el){ startTurn(); return; }
+  if (!el){ startTurn({ delayDrawMs: 400 }); return; }
   // Preset selectable colors
   const presetColors = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899'];
   // Build avatar tile lists from registry (player-* keys) or fallback pattern
@@ -122,6 +163,7 @@ function setupStartScreen(){
       state.playerConfig[pid].avatar = data.get(`p${pid}Avatar`) || state.playerConfig[pid].avatar;
     }
     el.classList.add('hidden');
-    startTurn();
+    // Delay card draw slightly so menu fade out finishes before animation
+    startTurn({ delayDrawMs: 500 });
   });
 }

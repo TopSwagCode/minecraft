@@ -4,6 +4,7 @@ import { key, axialDistance } from '../core/hex.js';
 import { terrainOfHex } from '../utils/terrain.js';
 import { computeReachable } from '../systems/movement.js';
 import { drawPiece } from '../systems/animation.js';
+import { drawHand, layoutHand, handleCardPointer } from './handCanvas.js';
 import { drawDiamondRain } from '../systems/diamondRain.js';
 import { TextureRegistry } from '../../textures.js';
 
@@ -63,6 +64,7 @@ export function drawBoard(){
   // Celebration particles (if winner)
   drawDiamondRain(ctx);
   drawHUD();
+  drawHand(ctx, canvas);
   if (state.winner){ drawWinOverlay(state.winner); }
 }
 

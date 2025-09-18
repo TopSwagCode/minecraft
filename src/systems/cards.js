@@ -14,6 +14,15 @@ const STARTING_CARDS = [
 let _cardUid = 1;
 function withIds(list){ return list.map(c => ({ ...c, id: 'c'+(_cardUid++) })); }
 
+function awaitImportHandHelpers(){
+  // Attempt to access exported function from loaded module (already parsed by browser module graph)
+  try {
+    // eslint-disable-next-line no-undef
+    if (window && window.__HAND_HELPERS__){ return window.__HAND_HELPERS__; }
+  } catch(_) {}
+  return {};
+}
+
 function createShuffledDeck(){
   const arr = withIds(STARTING_CARDS);
   for (let i = arr.length -1; i>0; i--){
@@ -36,8 +45,35 @@ export function drawCards(player, n){
     if (pdata.deck.length === 0){
       pdata.deck = createShuffledDeck();
     }
-    pdata.hand.push(pdata.deck.pop());
+    const card = pdata.deck.pop();
+    state.pendingHandAdditions.push(card);
+    const canvas = document.getElementById('board');
+    if (canvas){
+      // Compute intended final slot based on current hand + pending prior to this card
+      const futureCount = pdata.hand.length + state.pendingHandAdditions.length; // after all pending
+      const index = pdata.hand.length + state.pendingHandAdditions.length - 1; // zero-based
+      // Lazy import helper (to avoid circular, rely on global function if loaded)
+      const { computeHandSlot } = awaitImportHandHelpers();
+      let target = { x: (canvas.width/2)-45, y: canvas.height - 70 };
+      if (computeHandSlot){ target = computeHandSlot(futureCount, index, canvas); }
+      const from = state.pilePositions?.draw || { x: 10, y: target.y };
+  const startDelay = i * 110; // stagger
+  state.cardAnimations.push({ id: card.id+'-draw-'+performance.now(), type:'draw', card, from, to: target, t:0, duration:480, startDelay, arcHeight: 40, onComplete: () => {
+        // Move from pending to real hand
+        const idx = state.pendingHandAdditions.findIndex(c => c.id === card.id);
+        if (idx !== -1){
+          const [c] = state.pendingHandAdditions.splice(idx,1);
+          pdata.hand.push(c);
+          state.handLayoutDirty = true;
+        }
+      }});
+      state.animatingCards.add(card.id);
+    } else {
+      // Fallback: no canvas yet, add immediately
+      pdata.hand.push(card);
+    }
   }
+  state.handLayoutDirty = true;
 }
 
 export function consumeCard(cardId){
@@ -46,7 +82,17 @@ export function consumeCard(cardId){
   if (idx >= 0){
     const [card] = pdata.hand.splice(idx,1);
     pdata.discard.push(card);
+    // Animate discard (approx from old layout position to discard pile)
+    const canvas = document.getElementById('board');
+    if (canvas){
+      const lay = state.handLayout.find(l => l.cardId === card.id);
+      const from = lay ? { x: lay.x, y: lay.y } : { x: canvas.width/2 - 45, y: canvas.height - 70 };
+      const to = state.pilePositions?.discard || { x: canvas.width - 100, y: canvas.height - 70 };
+      state.cardAnimations.push({ id: card.id+'-discard-'+performance.now(), type:'discard', card, from, to, t:0, duration:380 });
+      state.animatingCards.add(card.id);
+    }
     if (pdata.selectedCard === card.id) pdata.selectedCard = null;
+    state.handLayoutDirty = true;
   }
 }
 
@@ -55,23 +101,8 @@ export function handEmpty(){
   return !pdata || pdata.hand.length === 0;
 }
 
-export function updateHandUI(){
-  const handDiv = document.getElementById('hand');
-  const pdata = state.playerData[state.currentPlayer];
-  if (!handDiv || !pdata) return;
-  handDiv.innerHTML='';
-  pdata.hand.forEach(card => {
-    const btn = document.createElement('div');
-    btn.className = 'card'; btn.dataset.type = card.terrain;
-    if (pdata.selectedCard === card.id) btn.classList.add('selected');
-    btn.innerHTML = `<span>${card.terrain}</span><span class="small">r${card.range}</span>`;
-    btn.addEventListener('click', () => {
-      pdata.selectedCard = (pdata.selectedCard === card.id) ? null : card.id;
-      updateHandUI();
-    });
-    handDiv.appendChild(btn);
-  });
-}
+// Legacy no-op: DOM hand UI removed; rendering handled in view/canvasHand.js
+export function updateHandUI(){ /* kept for backward compatibility */ }
 
 export function canEnterTerrain(terrain){
   const pdata = state.playerData[state.currentPlayer]; if (!pdata) return false;

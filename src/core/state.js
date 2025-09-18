@@ -20,4 +20,12 @@ export const state = {
     1: { color: '#3b82f6', avatar: 'player-1' },
     2: { color: '#ef4444', avatar: 'player-2' }
   },
+  // UI (canvas) card layout cache for click detection
+  handLayout: [], // [{cardId,x,y,w,h}]
+  hoverCardId: null,
+  handLayoutDirty: true,
+  cardAnimations: [], // {id,type,card,from:{x,y},to:{x,y},t,duration}
+  pilePositions: { draw:{x:0,y:0}, discard:{x:0,y:0} },
+  animatingCards: new Set(),
+  pendingHandAdditions: [], // cards drawn but not yet landed
 };

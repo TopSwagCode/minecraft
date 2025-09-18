@@ -5,6 +5,7 @@ import { terrainOfHex } from '../utils/terrain.js';
 import { canEnterTerrain, consumeCard, handEmpty, updateHandUI } from '../systems/cards.js';
 import { animateMove } from '../systems/animation.js';
 import { hasAnyMoves, getCanvas, pixelToAxial } from '../view/board.js';
+import { handleCardPointer } from '../view/handCanvas.js';
 
 export function attachInput(){
   const canvas = getCanvas();
@@ -98,6 +99,8 @@ function onTouchCancel(){
 
 function simulateClick(x,y){
   if (state.animating) return;
+  // Card click first
+  if (handleCardPointer(x,y,true)) return;
   const axial = roundAxial(pixelToAxial(x,y));
   const k = key(axial);
   if (!state.board.has(k)) return;
@@ -129,6 +132,8 @@ function simulateClick(x,y){
 
 function simulateHover(x,y){
   if (state.animating) return;
+  // Card hover first
+  if (handleCardPointer(x,y,false)) return;
   if (state.selectedPieceId == null){ state.previewPath = null; return; }
   const piece = state.pieces.find(p => p.id === state.selectedPieceId); if (!piece){ state.previewPath=null; return; }
   const axial = roundAxial(pixelToAxial(x,y)); const k = key(axial);
@@ -142,6 +147,7 @@ function simulateHover(x,y){
 function onClick(evt){
   if (state.animating) return;
   const { x, y } = toCanvasCoords(evt.clientX, evt.clientY);
+  if (handleCardPointer(x,y,true)) return;
   const axial = roundAxial(pixelToAxial(x,y));
   const k = key(axial);
   if (!state.board.has(k)) return;
@@ -181,6 +187,7 @@ function onMove(evt){
   if (state.selectedPieceId == null){ state.previewPath = null; return; }
   const piece = state.pieces.find(p => p.id === state.selectedPieceId); if (!piece){ state.previewPath=null; return; }
   const { x, y } = toCanvasCoords(evt.clientX, evt.clientY);
+  if (handleCardPointer(x,y,false)) return;
   const axial = roundAxial(pixelToAxial(x,y)); const k = key(axial);
   if (!state.board.has(k)){ state.previewPath=null; return; }
   if (state.pieces.some(p=>p.pos.q===axial.q && p.pos.r===axial.r) && !(axial.q===piece.pos.q && axial.r===piece.pos.r)){ state.previewPath=null; return; }
