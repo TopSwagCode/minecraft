@@ -16,6 +16,9 @@ export const state = {
   _reachableData: null,
   winner: null,
   camera: { x: 0, y: 0 }, // pixel offsets for panning
+  zoom: 1, // board/piece scale
+  minZoom: 0.5,
+  maxZoom: 2.2,
   playerConfig: {
     1: { color: '#3b82f6', avatar: 'player-1' },
     2: { color: '#ef4444', avatar: 'player-2' }

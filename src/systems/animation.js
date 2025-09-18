@@ -47,6 +47,7 @@ export function drawPiece(ctx, p, colors, HEX_SIZE){
   } else {
     const pos = axialToPixel(p.pos.q,p.pos.r); x=pos.x; y=pos.y;
   }
+  // HEX_SIZE parameter may already incorporate zoom scaling from caller
   const radius = HEX_SIZE * 0.45;
   const isSelected = p.id === state.selectedPieceId;
   // Background circle
