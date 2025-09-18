@@ -2,7 +2,7 @@ import { state } from '../core/state.js';
 import { roundAxial, key } from '../core/hex.js';
 import { computeReachable } from '../systems/movement.js';
 import { terrainOfHex } from '../utils/terrain.js';
-import { canEnterTerrain, consumeCard, handEmpty, updateHandUI } from '../systems/cards.js';
+import { consumeCard, handEmpty, updateHandUI } from '../systems/cards.js';
 import { endTurn } from '../gameExports.js';
 import { toggleMusic, toggleMute } from '../game.js';
 import { resetGameKeepSetup, showStartScreenAgain } from '../reset.js';
@@ -41,9 +41,11 @@ function onMouseDown(evt){
   dragState.camX = state.camera.x; dragState.camY = state.camera.y; dragState.button = evt.button;
   evt.preventDefault();
 }
+
 function onMouseUp(evt){
   if (dragState.active){ dragState.active=false; }
 }
+
 function onDragMove(evt){
   if (!dragState.active) return;
   const dx = evt.clientX - dragState.startX; const dy = evt.clientY - dragState.startY;
@@ -63,6 +65,7 @@ function onTouchStart(e){
   // Prevent synthetic mouse events so we only rely on touch logic
   e.preventDefault();
 }
+
 function onTouchMove(e){
   if (!touchState.tracking) return;
   const t = e.touches[0];
@@ -82,6 +85,7 @@ function onTouchMove(e){
     simulateHover(localX, localY);
   }
 }
+
 function onTouchEnd(e){
   clearTimeout(touchState.longPressTimer);
   if (!touchState.tracking) return;
@@ -95,121 +99,69 @@ function onTouchEnd(e){
     simulateClick(x,y);
   }
 }
+
 function onTouchCancel(){
   clearTimeout(touchState.longPressTimer);
   touchState.tracking=false; touchState.moved=false; touchState.longPress=false;
 }
 
-function simulateClick(x,y){
-  if (state.animating) return;
-  // Card click first
-  if (handleCardPointer(x,y,true)) return;
-  const axial = roundAxial(pixelToAxial(x,y));
-  const k = key(axial);
-  if (!state.board.has(k)) return;
-  const clickedPiece = state.pieces.find(p => p.pos.q===axial.q && p.pos.r===axial.r);
-  if (clickedPiece && clickedPiece.player === state.currentPlayer){
-    state.selectedPieceId = clickedPiece.id === state.selectedPieceId ? null : clickedPiece.id;
-    state.previewPath = null; return;
-  }
-  if (state.selectedPieceId != null && !clickedPiece){
-    const piece = state.pieces.find(p => p.id === state.selectedPieceId); if (!piece) return;
-    computeReachable(piece); const rd = state._reachableData; if (!rd) return;
-    const entry = rd.map.get(k); if (entry){
-      const { path, cardId } = entry;
-      animateMove(piece, path, () => {
-        consumeCard(cardId);
-        state.previewPath = null; state._reachableData = null;
-  if (handEmpty()) state.endTurnEnabled = true;
-        if (!hasAnyMoves()) hintNoMoves();
-        updateStatus(); updateHandUI();
-        const last = path[path.length-1];
-        if (!state.winner){
-          const terr = terrainOfHex(last.q,last.r);
-          if (terr === 'diamond') { state.winner = state.currentPlayer; state.endTurnEnabled = false; }
-        }
-      });
-    }
-  }
-}
-
-function simulateHover(x,y){
-  if (state.animating) return;
-  // Card hover first
-  if (handleCardPointer(x,y,false)) return;
-  if (state.selectedPieceId == null){ state.previewPath = null; return; }
-  const piece = state.pieces.find(p => p.id === state.selectedPieceId); if (!piece){ state.previewPath=null; return; }
-  const axial = roundAxial(pixelToAxial(x,y)); const k = key(axial);
-  if (!state.board.has(k)){ state.previewPath=null; return; }
-  if (state.pieces.some(p=>p.pos.q===axial.q && p.pos.r===axial.r) && !(axial.q===piece.pos.q && axial.r===piece.pos.r)){ state.previewPath=null; return; }
-  computeReachable(piece); const rd = state._reachableData; if (!rd){ state.previewPath=null; return; }
-  const entry = rd.map.get(k); if (!entry){ state.previewPath=null; return; }
-  state.previewPath = entry.path;
-}
-
-function onClick(evt){
-  if (state.animating) return;
-  const { x, y } = toCanvasCoords(evt.clientX, evt.clientY);
+function processUIClick(x,y, evt){
   // Music button
   const mb = state.musicButton;
   if (x>=mb.x && x<=mb.x+mb.w && y>=mb.y && y<=mb.y+mb.h){
-    if (evt.metaKey || evt.shiftKey || evt.altKey || evt.ctrlKey){
-      toggleMute();
-    } else {
-      toggleMusic();
-    }
-    return;
+    if (evt && (evt.metaKey || evt.ctrlKey || evt.shiftKey || evt.altKey)) toggleMute(); else toggleMusic();
+    return true;
   }
   // Win overlay buttons
   if (state.winner && state.winButtons && state.winButtons.length){
     const hit = state.winButtons.find(b => x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h);
     if (hit){
-      if (hit.id === 'play-again'){
-        resetGameKeepSetup();
-      } else if (hit.id === 'start-screen'){
-        showStartScreenAgain();
-      }
-      return;
+      if (hit.id === 'play-again') resetGameKeepSetup();
+      else if (hit.id === 'start-screen') showStartScreenAgain();
+      return true;
     }
   }
-  // End Turn button region
-  const btn = state.endTurnButton;
-  if (state.endTurnEnabled && x >= btn.x && x <= btn.x+btn.w && y >= btn.y && y <= btn.y+btn.h){
-    endTurn(); return;
-  }
+  // End Turn
+  const eb = state.endTurnButton;
+  if (state.endTurnEnabled && x>=eb.x && x<=eb.x+eb.w && y>=eb.y && y<=eb.y+eb.h){ endTurn(); return true; }
+  return false;
+}
+
+function simulateClick(x,y, evt){
+  if (state.animating) return;
+  if (processUIClick(x,y, evt)) return;
   if (handleCardPointer(x,y,true)) return;
-  const axial = roundAxial(pixelToAxial(x,y));
-  const k = key(axial);
+  const axial = roundAxial(pixelToAxial(x,y)); const k = key(axial);
   if (!state.board.has(k)) return;
   const clickedPiece = state.pieces.find(p => p.pos.q===axial.q && p.pos.r===axial.r);
   if (clickedPiece && clickedPiece.player === state.currentPlayer){
-    state.selectedPieceId = clickedPiece.id === state.selectedPieceId ? null : clickedPiece.id;
-    state.previewPath = null; return;
+    state.selectedPieceId = clickedPiece.id === state.selectedPieceId ? null : clickedPiece.id; state.previewPath=null; return;
   }
   if (state.selectedPieceId != null && !clickedPiece){
     const piece = state.pieces.find(p => p.id === state.selectedPieceId); if (!piece) return;
     computeReachable(piece); const rd = state._reachableData; if (!rd) return;
-    const entry = rd.map.get(k); if (entry){
-      const { path, cardId } = entry;
-      animateMove(piece, path, () => {
-        consumeCard(cardId);
-        state.previewPath = null; state._reachableData = null;
-  if (handEmpty()) state.endTurnEnabled = true;
-        if (!hasAnyMoves()) hintNoMoves();
-        updateStatus(); updateHandUI();
-        // Win condition: entering diamond hex
-        const last = path[path.length -1];
-        if (!state.winner){
-          const terr = terrainOfHex(last.q,last.r);
-            if (terr === 'diamond') {
-              state.winner = state.currentPlayer;
-              // Disable further interaction
-              state.endTurnEnabled = false;
-            }
-        }
-      });
-    }
+    const entry = rd.map.get(k); if (!entry) return;
+    const { path, cardId } = entry;
+    animateMove(piece, path, () => {
+      consumeCard(cardId);
+      state.previewPath=null; state._reachableData=null;
+      if (handEmpty()) state.endTurnEnabled = true;
+      if (!hasAnyMoves()) hintNoMoves();
+      updateStatus(); updateHandUI();
+      const last = path[path.length-1];
+      if (!state.winner){
+        const terr = terrainOfHex(last.q,last.r);
+        if (terr === 'diamond'){ state.winner = state.currentPlayer; state.endTurnEnabled=false; }
+      }
+    });
   }
+}
+
+function onClick(evt){
+  if (state.animating) return;
+  const { x, y } = toCanvasCoords(evt.clientX, evt.clientY);
+  if (processUIClick(x,y, evt)) return;
+  simulateClick(x,y, evt);
 }
 
 function onMove(evt){
@@ -247,9 +199,6 @@ function onMove(evt){
   const entry = rd.map.get(k); if (!entry){ state.previewPath=null; return; }
   state.previewPath = entry.path;
 }
-
-// Bridge pixel->axial using inline math (duplicated from original; could centralize)
-// pixelToAxial now imported from board module
 
 function hintNoMoves(){
   const status = document.getElementById('status');
