@@ -33,4 +33,14 @@ export const state = {
   winButtons: [], // populated when winner exists [{id,label,x,y,w,h}]
   hoverControl: null, // 'endTurn' or 'win:play-again' etc
   _fullResetOnStart: false,
+  // Background music state
+  music: {
+    enabled: true,
+    playing: false,
+    userInteracted: false, // becomes true after first pointer interaction to satisfy autoplay policies
+    volume: 0.5,
+    audio: null,
+    muted: false,
+  },
+  musicButton: { x:0, y:0, w:38, h:38 },
 };

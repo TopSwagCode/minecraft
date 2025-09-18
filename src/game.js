@@ -77,9 +77,64 @@ export function endTurn(){
   });
 }
 
+// --- Background Music Management ---
+function initMusicSystem(){
+  // Defer actual playback until first user interaction (required by many browsers)
+  const tryInitAudio = () => {
+    if (state.music.audio) return; // already created
+    const audio = new Audio();
+    // Provide a default royalty-free style loop suggestion path; user can replace file
+    audio.src = 'music/background.ogg'; // Ensure this file exists or replace path
+    audio.loop = true;
+    audio.volume = state.music.muted ? 0 : state.music.volume;
+    state.music.audio = audio;
+    if (state.music.enabled){
+      audio.play().then(()=>{ state.music.playing = true; }).catch(()=>{/* ignored until user gesture */});
+    }
+  };
+  const userGesture = () => {
+    state.music.userInteracted = true;
+    tryInitAudio();
+    if (state.music.audio && state.music.enabled && !state.music.playing){
+      state.music.audio.play().then(()=>{ state.music.playing=true; }).catch(()=>{});
+    }
+    window.removeEventListener('pointerdown', userGesture);
+    window.removeEventListener('keydown', userGesture);
+  };
+  window.addEventListener('pointerdown', userGesture, { once:false });
+  window.addEventListener('keydown', userGesture, { once:false });
+}
+
+export function toggleMusic(){
+  if (!state.music.audio){
+    // Force creation attempt (if user already interacted it'll succeed)
+    const audio = new Audio();
+    audio.src = 'music/background.mp3';
+    audio.loop = true; audio.volume = state.music.muted ? 0 : state.music.volume;
+    state.music.audio = audio;
+  }
+  state.music.enabled = !state.music.enabled;
+  if (state.music.audio){
+    if (state.music.enabled){
+      state.music.audio.play().then(()=>{ state.music.playing=true; }).catch(()=>{});
+    } else {
+      state.music.audio.pause();
+      state.music.playing = false;
+    }
+  }
+}
+
+export function toggleMute(){
+  state.music.muted = !state.music.muted;
+  if (state.music.audio){
+    state.music.audio.volume = state.music.muted ? 0 : state.music.volume;
+  }
+}
+
 async function init(){
   initBoard();
   attachInput();
+  initMusicSystem();
   // Remove DOM button usage; kept element in HTML but inert now (optional: could hide)
   try {
     await loadMap('maps/irregular_islands.json');

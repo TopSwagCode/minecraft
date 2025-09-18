@@ -64,6 +64,7 @@ export function drawBoard(){
   // Celebration particles (if winner)
   drawDiamondRain(ctx);
   drawHUD();
+  drawMusicButton();
   drawHand(ctx, canvas);
   if (state.winner){ drawWinOverlay(state.winner); }
 }
@@ -114,6 +115,37 @@ function drawHUD(){
     ctx.fillText(`Cards: ${cardStr}`,12,56);
     if (!hasAnyMoves()) { ctx.fillStyle='#fca5a5'; ctx.fillText('No moves available',12,74); ctx.fillStyle='#ccc'; }
   }
+}
+
+function drawMusicButton(){
+  const b = state.musicButton;
+  b.w = 38; b.h = 38; b.x = canvas.width - b.w - 16; b.y = 12;
+  ctx.save();
+  const isHover = state.hoverControl === 'music';
+  const playing = state.music.enabled && state.music.playing;
+  ctx.globalAlpha = 0.9;
+  const grad = ctx.createLinearGradient(b.x,b.y,b.x,b.y+b.h);
+  grad.addColorStop(0, isHover ? '#10b981' : '#059669');
+  grad.addColorStop(1, isHover ? '#047857' : '#03694d');
+  if (!playing) { grad.addColorStop(0,'#4b5563'); grad.addColorStop(1,'#374151'); }
+  ctx.fillStyle = playing ? grad : '#374151';
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(b.x,b.y,b.w,b.h,10) : roundedRectPolyfill(ctx,b.x,b.y,b.w,b.h,10); ctx.fill();
+  ctx.lineWidth=2; ctx.strokeStyle = isHover ? '#064e3b' : '#1f2937'; ctx.stroke();
+  // Icon
+  ctx.fillStyle = '#fff'; ctx.translate(b.x + b.w/2, b.y + b.h/2);
+  if (playing){
+    // Pause icon
+    const barW = 5; const gap = 5; const h = 16;
+    ctx.fillRect(-gap/2 - barW, -h/2, barW, h);
+    ctx.fillRect(gap/2, -h/2, barW, h);
+  } else {
+    // Play triangle
+    ctx.beginPath(); ctx.moveTo(-6,-10); ctx.lineTo(12,0); ctx.lineTo(-6,10); ctx.closePath(); ctx.fill();
+  }
+  if (state.music.muted){
+    ctx.strokeStyle='#f87171'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(-14,-14); ctx.lineTo(14,14); ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function drawWinOverlay(player){

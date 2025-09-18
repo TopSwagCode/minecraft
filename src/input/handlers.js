@@ -4,6 +4,7 @@ import { computeReachable } from '../systems/movement.js';
 import { terrainOfHex } from '../utils/terrain.js';
 import { canEnterTerrain, consumeCard, handEmpty, updateHandUI } from '../systems/cards.js';
 import { endTurn } from '../gameExports.js';
+import { toggleMusic, toggleMute } from '../game.js';
 import { resetGameKeepSetup, showStartScreenAgain } from '../reset.js';
 import { animateMove } from '../systems/animation.js';
 import { hasAnyMoves, getCanvas, pixelToAxial } from '../view/board.js';
@@ -149,6 +150,16 @@ function simulateHover(x,y){
 function onClick(evt){
   if (state.animating) return;
   const { x, y } = toCanvasCoords(evt.clientX, evt.clientY);
+  // Music button
+  const mb = state.musicButton;
+  if (x>=mb.x && x<=mb.x+mb.w && y>=mb.y && y<=mb.y+mb.h){
+    if (evt.metaKey || evt.shiftKey || evt.altKey || evt.ctrlKey){
+      toggleMute();
+    } else {
+      toggleMusic();
+    }
+    return;
+  }
   // Win overlay buttons
   if (state.winner && state.winButtons && state.winButtons.length){
     const hit = state.winButtons.find(b => x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h);
@@ -204,6 +215,13 @@ function onClick(evt){
 function onMove(evt){
   if (state.animating) return;
   const { x, y } = toCanvasCoords(evt.clientX, evt.clientY);
+  // Music hover
+  const mb = state.musicButton;
+  if (x>=mb.x && x<=mb.x+mb.w && y>=mb.y && y<=mb.y+mb.h){
+    state.hoverControl = 'music';
+  } else if (state.hoverControl === 'music') {
+    state.hoverControl = null;
+  }
   // Win buttons hover
   if (state.winner && state.winButtons && state.winButtons.length){
     const hit = state.winButtons.find(b => x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h);
