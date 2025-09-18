@@ -1,0 +1,24 @@
+{
+  "name": "Irregular Islands",
+  "layout": [
+    "   aaabbaa    ",
+    "  aaaaabbc    ",
+    "  aawwwbbw    ",
+    "  aawwwbbww   ",
+    "   aaabbb     ",
+    "      cccb    ",
+    "     cccbbd   ",
+    "      ccbdd   "
+  ],
+  "legend": {
+    "a": { "tex": "hello-grass" },
+    "b": { "tex": "hello-sand" },
+    "w": { "tex": "hello-mountain" },
+    "c": { "tex": "hello-water" },
+    "d": { "tex": "hello-diamond" }
+  },
+  "pieces": {
+    "p1": [ {"q": 2, "r": 1} ],
+    "p2": [ {"q": 1, "r": 1} ]
+  }
+}

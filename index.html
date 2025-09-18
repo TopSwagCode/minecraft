@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>Hex Tabletop Demo</title>
+	<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+	<div id="startScreen" class="start-screen" aria-modal="true" role="dialog">
+		<div class="start-panel">
+			<h2>Start Game</h2>
+			<form id="playerSetupForm">
+				<div class="player-config" data-player="1">
+					<h3>Player 1</h3>
+					<div class="color-picker-label">Color</div>
+					<div class="color-list" id="p1ColorList"></div>
+					<input type="hidden" name="p1Color" id="p1ColorValue" value="#3b82f6" />
+					<div class="avatar-picker-label">Avatar</div>
+					<div class="avatar-list" id="p1AvatarList"></div>
+					<input type="hidden" name="p1Avatar" id="p1AvatarValue" />
+				</div>
+				<div class="player-config" data-player="2">
+					<h3>Player 2</h3>
+					<div class="color-picker-label">Color</div>
+					<div class="color-list" id="p2ColorList"></div>
+					<input type="hidden" name="p2Color" id="p2ColorValue" value="#ef4444" />
+					<div class="avatar-picker-label">Avatar</div>
+					<div class="avatar-list" id="p2AvatarList"></div>
+					<input type="hidden" name="p2Avatar" id="p2AvatarValue" />
+				</div>
+				<div class="actions">
+					<button type="submit" id="startGameBtn">Start</button>
+				</div>
+			</form>
+		</div>
+	</div>
+	<header>
+		<h1>Hex Tabletop Demo</h1>
+		<div class="controls">
+			<div id="hand" class="hand" aria-live="polite" aria-label="Cards in hand"></div>
+			<button id="endTurnBtn" disabled>End Turn</button>
+		</div>
+		<div class="status" id="status"></div>
+	</header>
+	<main>
+		<canvas id="board" width="900" height="700" aria-label="Hex board" role="img"></canvas>
+		<aside class="legend">
+			<h2>How to Play</h2>
+			<ol>
+				<li>At the start of your turn you automatically draw 3 terrain cards (deck: 2 Grass, 2 Sand, 2 Water; reshuffle when empty).</li>
+				<li>Select one of your pieces (Player 1: Blue, Player 2: Red).</li>
+				<li>Highlighted adjacent hexes are those whose terrain matches at least one card in your hand.</li>
+				<li>Click a highlighted hex to move there, consuming one matching card from your hand.</li>
+				<li>When out of cards (or earlier if you wish) press End Turn. Then the other player draws and goes.</li>
+			</ol>
+			<p>Goal (example): Reach the opponent's starting side or just experiment.</p>
+		</aside>
+	</main>
+	<footer>
+		<small>Prototype demo. Use and extend freely.</small>
+	</footer>
+	<script type="module" src="textures.js"></script>
+	<script type="module" src="src/game.js"></script>
+</body>
+</html>
