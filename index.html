@@ -7,6 +7,16 @@
 	<link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+	<!-- Loading Screen -->
+	<div id="loadingScreen" class="loading-screen" aria-hidden="false">
+		<div class="loading-inner">
+			<div class="spinner-hex"></div>
+			<div class="loading-text">Loading <span id="loadingPercent">0%</span></div>
+			<div class="progress-bar"><div class="progress-fill" id="loadingBarFill"></div></div>
+		</div>
+	</div>
+
 	<div id="startScreen" class="start-screen" aria-modal="true" role="dialog">
 		<div class="start-panel">
 			<h2>Start Game</h2>
