@@ -131,16 +131,43 @@ export function toggleMute(){
   }
 }
 
+function updateLoadingProgress(done, total){
+  const pct = total === 0 ? 0 : Math.round((done/total)*100);
+  const bar = document.getElementById('loadingBarFill');
+  const label = document.getElementById('loadingPercent');
+  if (bar) bar.style.width = pct + '%';
+  if (label) label.textContent = pct + '%';
+}
+
+async function loadAssetsWithProgress(){
+  // Collect sources (already registered). We'll load manually for progress.
+  const entries = [...TextureRegistry.sources.entries()];
+  let loaded = 0; updateLoadingProgress(0, entries.length);
+  const promises = entries.map(([name, url]) => new Promise(res => {
+    const img = new Image();
+    img.onload = () => { TextureRegistry.images.set(name,img); loaded++; updateLoadingProgress(loaded, entries.length); res(); };
+    img.onerror = () => { console.warn('Failed texture', name); loaded++; updateLoadingProgress(loaded, entries.length); res(); };
+    img.src = url;
+  }));
+  await Promise.all(promises);
+  TextureRegistry.loaded = true; state.texturesReady = true;
+}
+
 async function init(){
   initBoard();
   attachInput();
   initMusicSystem();
-  // Remove DOM button usage; kept element in HTML but inert now (optional: could hide)
+  const loadingEl = document.getElementById('loadingScreen');
+  // Map + textures sequentially; could parallelize but keep progress semantics simple.
   try {
     await loadMap('maps/irregular_islands.json');
   } catch (e) { console.warn('Map load failed, continuing with empty board', e); }
-  // Load textures before first draw so board renders with images
-  try { await loadAllTextures(); state.texturesReady = true; } catch(e){ console.warn('Texture load issue', e); }
+  try {
+    await loadAssetsWithProgress();
+  } catch(e){ console.warn('Texture load issue', e); }
+  // Small delay for aesthetic polish
+  await new Promise(r => setTimeout(r, 250));
+  if (loadingEl){ loadingEl.classList.add('fade-out'); setTimeout(()=>loadingEl.remove(), 600); }
   setupStartScreen();
   onUpdate(dt => { updateAnimations(dt); updateCardAnimations(dt); updateDiamondRain(dt, document.getElementById('board')); });
   onRender(() => drawBoard());
