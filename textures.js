@@ -60,6 +60,14 @@ export function registerDefaultTextures(basePath = 'src/assets/images') {
   tryRegister('player-4', 'players/enderman.png');
   tryRegister('player-5', 'players/zombie.png');
   tryRegister('player-6', 'players/skeleton.png');
+  // Range icon (user can replace file path or provide alternative format like webp)
+  tryRegister('range-icon', 'range_icon.webp');
+  // Terrain specific range icons (optional overrides)
+  tryRegister('range-icon-grass', 'range_icon_grass.png');
+  tryRegister('range-icon-water', 'range_icon_water.png');
+  tryRegister('range-icon-sand', 'range_icon_sand.png');
+  tryRegister('range-icon-mountain', 'range_icon_mountain.webp');
+  tryRegister('range-icon-diamond', 'range_icon_diamond.webp');
 }
 
 // Auto-register if running in browser and not already populated

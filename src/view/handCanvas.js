@@ -3,11 +3,28 @@ import { COLORS } from '../core/constants.js';
 import { TextureRegistry } from '../../textures.js';
 
 // Layout constants
-const CARD_W = 90;
-const CARD_H = 60;
+const CARD_W = 130; // increased from 90
+const CARD_H = 90;  // increased from 60
 const PADDING = 10;
 const GAP = 8;
 const RADIUS = 10;
+// Range icon (generated) cache
+const _rangeIconCache = new Map(); // key: size -> canvas
+
+function getRangeIcon(size=10){
+  if (_rangeIconCache.has(size)) return _rangeIconCache.get(size);
+  const c = document.createElement('canvas'); c.width = size; c.height = size;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(size/2, size/2, size/2 - 0.8, 0, Math.PI*2);
+  const grd = g.createRadialGradient(size/2, size/2, 1, size/2, size/2, size/2);
+  grd.addColorStop(0,'#fff'); grd.addColorStop(0.5,'#ffe3a1'); grd.addColorStop(1,'#d19a27');
+  g.fillStyle = grd; g.fill();
+  g.lineWidth = 1; g.strokeStyle = '#5a430f'; g.stroke();
+  g.beginPath(); g.arc(size/2, size/2, size/2 - 3, 0, Math.PI*2);
+  g.globalAlpha=0.4; g.fillStyle='#000'; g.fill(); g.globalAlpha=1;
+  _rangeIconCache.set(size,c);
+  return c;
+}
 
 function cardColor(type){
   switch(type){
@@ -96,11 +113,31 @@ export function drawHand(ctx, canvas){
       ctx.save(); ctx.fillStyle='rgba(255,255,255,0.07)';
       roundedRect(ctx, lay.x, lay.y, lay.w, lay.h, RADIUS); ctx.fill(); ctx.restore();
     }
-    // Text labels
-    ctx.fillStyle = '#fff'; ctx.font = '600 13px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(card.terrain, lay.x + lay.w/2, lay.y + lay.h/2 - 6);
-    ctx.fillStyle = '#ffd166'; ctx.font = '10px system-ui';
-    ctx.fillText('r'+card.range, lay.x + lay.w/2, lay.y + lay.h/2 + 10);
+    // Draw movement range icons (one per range) centered vertically
+  const iconCount = Math.max(1, card.range || 1);
+  // Adaptive size: start large, reduce logarithmically-ish as iconCount grows
+  const baseMax = 40; // new bigger maximum
+  const baseMin = 10;
+  // Soft shrink factor: bigger drop early, slower later
+  const shrink = 1 / (1 + Math.log2(iconCount)); // 1 ->1, 2 -> ~0.5, 4 -> ~0.33, 8 -> ~0.25
+  let iconSize = Math.round(baseMax * shrink + (baseMin * (1-shrink)));
+  // Ensure they still fit horizontally; adjust downward if overflowing
+  const maxAllowed = Math.floor((lay.w - 16) / iconCount - 4);
+  if (isFinite(maxAllowed) && maxAllowed > 0) iconSize = Math.min(iconSize, maxAllowed);
+  if (iconSize < baseMin) iconSize = baseMin;
+  const spacing = Math.max(3, Math.min(8, Math.round(iconSize * 0.2)));
+    const totalW = iconCount * iconSize + (iconCount-1)*spacing;
+    const startX = lay.x + (lay.w - totalW)/2;
+    const yIcons = lay.y + (lay.h - iconSize)/2;
+    let iconImg = null;
+    if (TextureRegistry && TextureRegistry.images){
+      const specificKey = 'range-icon-' + card.terrain;
+      iconImg = TextureRegistry.images.get(specificKey) || TextureRegistry.images.get('range-icon');
+    }
+    if (!iconImg) iconImg = getRangeIcon(iconSize);
+    for (let i=0;i<iconCount;i++){
+      ctx.drawImage(iconImg, Math.round(startX + i*(iconSize+spacing)), yIcons, iconSize, iconSize);
+    }
   });
   ctx.restore();
 
@@ -215,9 +252,24 @@ function drawAnimatedCard(ctx, card, x, y, prog, anim){
   ctx.save();
   ctx.lineWidth=1.4; ctx.strokeStyle='#000';
   roundedRect(ctx,x,y,w,h,10); ctx.stroke();
-  ctx.globalAlpha=1; ctx.fillStyle='#fff'; ctx.font='600 13px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(card.terrain, x+w/2, y+h/2 - 6);
-  ctx.fillStyle='#ffd166'; ctx.font='10px system-ui'; ctx.fillText('r'+card.range, x+w/2, y+h/2 + 10);
+  // Overlay range icons (centered) for animated card
+  const iconCount = Math.max(1, card.range || 1);
+  const baseMax = 40; const baseMin = 10;
+  const shrink = 1 / (1 + Math.log2(iconCount));
+  let iconSize = Math.round(baseMax * shrink + (baseMin * (1-shrink)));
+  const maxAllowed = Math.floor((w - 16) / iconCount - 4);
+  if (isFinite(maxAllowed) && maxAllowed > 0) iconSize = Math.min(iconSize, maxAllowed);
+  if (iconSize < baseMin) iconSize = baseMin;
+  const spacing = Math.max(3, Math.min(8, Math.round(iconSize * 0.2)));
+  const totalW = iconCount * iconSize + (iconCount-1)*spacing;
+  const startX = x + (w - totalW)/2; const yIcons = y + (h - iconSize)/2;
+  let iconImg = null;
+  if (TextureRegistry && TextureRegistry.images){
+    const specificKey = 'range-icon-' + card.terrain;
+    iconImg = TextureRegistry.images.get(specificKey) || TextureRegistry.images.get('range-icon');
+  }
+  if (!iconImg) iconImg = getRangeIcon(iconSize);
+  for (let i=0;i<iconCount;i++) ctx.drawImage(iconImg, Math.round(startX + i*(iconSize+spacing)), yIcons, iconSize, iconSize);
   ctx.restore();
 }
 
