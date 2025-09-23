@@ -129,6 +129,10 @@ ol { padding-left:1.1rem; }
 .player-config { background:#1d2631; padding:1.05rem 1.05rem .95rem; border:1px solid #243041; border-radius:14px; flex:1; display:flex; flex-direction:column; gap:.7rem; min-width:0; position:relative; }
 .player-config::after { content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; box-shadow:0 0 0 1px #0e141b,0 4px 10px -4px #000 inset; }
 .player-config h3 { margin:.2rem 0 .25rem; font-size:1rem; letter-spacing:.5px; }
+.player-config .player-name{ display:inline-block; padding:2px 6px 3px; border-radius:6px; cursor:text; min-width:80px; outline:none; transition:background .15s, box-shadow .15s; }
+.player-config .player-name:hover{ background:rgba(255,255,255,0.06); }
+.player-config .player-name:focus{ background:rgba(59,130,246,0.15); box-shadow:0 0 0 2px rgba(59,130,246,0.35); }
+.player-config .player-name.editing{ background:rgba(255,255,255,0.12); }
 .player-config label { font-size:.7rem; text-transform:uppercase; letter-spacing:.8px; display:flex; flex-direction:column; gap:.35rem; font-weight:600; color:#ccd5e1; }
 .player-config input[type=color] { display:none; }
 .color-picker-label { font-size:.6rem; text-transform:uppercase; letter-spacing:.9px; color:#8fa3b8; }

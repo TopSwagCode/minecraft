@@ -162,7 +162,9 @@ function drawWinOverlay(player){
   ctx.fillStyle = '#fff';
   ctx.font = '48px system-ui';
   ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(`Player ${player} Wins!`, canvas.width/2, canvas.height/2);
+  const cfg = state.playerConfig && state.playerConfig[player];
+  const name = (cfg && cfg.name) ? cfg.name : `Player ${player}`;
+  ctx.fillText(`${name} Wins!`, canvas.width/2, canvas.height/2);
   ctx.font='20px system-ui';
   ctx.fillText('Choose an option:', canvas.width/2, canvas.height/2 + 50);
 

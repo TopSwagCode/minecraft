@@ -20,8 +20,8 @@ export const state = {
   minZoom: 0.5,
   maxZoom: 2.2,
   playerConfig: {
-    1: { color: '#3b82f6', avatar: 'player-1' },
-    2: { color: '#ef4444', avatar: 'player-2' }
+    1: { color: '#3b82f6', avatar: 'player-1', name: 'Player 1' },
+    2: { color: '#ef4444', avatar: 'player-2', name: 'Player 2' }
   },
   // UI (canvas) card layout cache for click detection
   handLayout: [], // [{cardId,x,y,w,h}]

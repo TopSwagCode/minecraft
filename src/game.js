@@ -241,6 +241,40 @@ function setupStartScreen(){
     }
   }
   buildColorPickers();
+  // Initialize editable player names
+  const nameEls = el.querySelectorAll('.player-name[data-player-name]');
+  nameEls.forEach(span => {
+    const pid = parseInt(span.getAttribute('data-player-name'),10);
+    if (!pid || !state.playerConfig[pid]) return;
+    // Set initial from state (in case of restart without reload)
+    span.textContent = state.playerConfig[pid].name || `Player ${pid}`;
+    span.addEventListener('focus', () => {
+      span.classList.add('editing');
+      // Select all text after focus (delay to ensure selection works)
+      setTimeout(()=>{
+        const r = document.createRange(); r.selectNodeContents(span); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      }, 0);
+    });
+    function commit(){
+      let val = span.textContent.trim();
+      if (!val){ val = `Player ${pid}`; }
+      // Limit length to avoid layout break
+      if (val.length > 20) val = val.slice(0,20);
+      span.textContent = val;
+      state.playerConfig[pid].name = val;
+      span.classList.remove('editing');
+    }
+    span.addEventListener('blur', commit);
+    span.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); span.blur(); }
+      // Prevent line breaks
+      if (e.key === 'Enter' || e.key === 'Return'){ e.preventDefault(); }
+    });
+    // Sanitize input (remove newlines) on input
+    span.addEventListener('input', () => {
+      span.textContent = span.textContent.replace(/\n+/g,' ');
+    });
+  });
   const form = document.getElementById('playerSetupForm');
   const step1 = document.getElementById('stepPlayers');
   const step2 = document.getElementById('stepMaps');
@@ -368,6 +402,10 @@ function setupStartScreen(){
     for (const pid of [1,2]){
       state.playerConfig[pid].color = data.get(`p${pid}Color`) || state.playerConfig[pid].color;
       state.playerConfig[pid].avatar = data.get(`p${pid}Avatar`) || state.playerConfig[pid].avatar;
+      // Name already updated live; ensure fallback if somehow empty
+      if (!state.playerConfig[pid].name || !state.playerConfig[pid].name.trim()){
+        state.playerConfig[pid].name = `Player ${pid}`;
+      }
     }
     // Determine chosen map (fallback to first available if not set)
     let chosenMap = data.get('selectedMap');
