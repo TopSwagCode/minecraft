@@ -1,0 +1,43 @@
+{
+  "name": "Desert Storm",
+  "layout": [
+    "   aaabbaaaa     ",
+    "  aaaabbbccad    ",
+    "  aabbbbbwwad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "  aawwbbbwaad    ",
+    "   aaabbbbb      "
+  ],
+  "legend": {
+    "a": { "tex": "hello-grass" },
+    "b": { "tex": "hello-sand" },
+    "w": { "tex": "hello-mountain" },
+    "c": { "tex": "hello-water" },
+    "d": { "tex": "hello-diamond" }
+  },
+  "pieces": {
+    "p1": [ {"q": 1, "r": 1} ],
+    "p2": [ {"q": 0, "r": 3} ]
+  }
+}

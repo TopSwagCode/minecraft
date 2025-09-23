@@ -8,6 +8,7 @@ import { initBoard, drawBoard } from './view/board.js';
 import { updateCardAnimations } from './view/handCanvas.js';
 import { loadMap } from './maps/loader.js';
 import { loadAllTextures, TextureRegistry } from '../textures.js';
+import { getMapPreview } from './maps/preview.js';
 import { attachInput } from './input/handlers.js';
 import { drawCards, ensurePlayerState, handEmpty, updateHandUI } from './systems/cards.js';
 import { classifyTerrain } from './utils/terrain.js';
@@ -165,6 +166,8 @@ async function init(){
   try {
     await loadAssetsWithProgress();
   } catch(e){ console.warn('Texture load issue', e); }
+  // Notify preview system textures are ready (regenerate cached thumbnails with textures)
+  window.dispatchEvent(new Event('textures-loaded'));
   // Small delay for aesthetic polish
   await new Promise(r => setTimeout(r, 250));
   if (loadingEl){ loadingEl.classList.add('fade-out'); setTimeout(()=>loadingEl.remove(), 600); }
@@ -239,6 +242,76 @@ function setupStartScreen(){
   }
   buildColorPickers();
   const form = document.getElementById('playerSetupForm');
+  const step1 = document.getElementById('stepPlayers');
+  const step2 = document.getElementById('stepMaps');
+  const pill1 = el.querySelector('[data-step-pill="1"]');
+  const pill2 = el.querySelector('[data-step-pill="2"]');
+  const btnNext = document.getElementById('toStep2Btn');
+  const btnBack = document.getElementById('backToStep1Btn');
+  const mapGrid = document.getElementById('mapGrid');
+  const mapEmptyHint = document.getElementById('mapEmptyHint');
+  const selectedMapInput = document.getElementById('selectedMapValue');
+
+  function setStep(n){
+    [step1, step2].forEach(s => s.classList.remove('active'));
+    [pill1, pill2].forEach(p => p.classList.remove('active'));
+    if (n===1){ step1.classList.add('active'); pill1.classList.add('active'); }
+    else { step2.classList.add('active'); pill2.classList.add('active'); }
+  }
+  btnNext?.addEventListener('click', () => setStep(2));
+  btnBack?.addEventListener('click', () => setStep(1));
+  pill1?.addEventListener('click', () => setStep(1));
+  pill2?.addEventListener('click', () => setStep(2));
+
+  // List available maps (static list for now; could fetch directory)
+  const availableMaps = [
+    { path:'maps/irregular_islands.json', label:'Irregular Islands' },
+    { path:'maps/desert_storm.json', label:'Desert Storm' },
+    { path:'maps/desert_storm copy 2.json', label:'Desert Storm 2' },
+    { path:'maps/desert_storm copy 3.json', label:'Desert Storm 3' },
+    { path:'maps/desert_storm copy 4.json', label:'Desert Storm 4' },
+    { path:'maps/desert_storm copy 5.json', label:'Desert Storm 5' },
+    { path:'maps/desert_storm copy 6.json', label:'Desert Storm 6' }
+  ];
+  buildMapCards(availableMaps);
+
+  function buildMapCards(list){
+    mapGrid.innerHTML='';
+    if (!list.length){ mapEmptyHint.style.display='block'; return; }
+    mapEmptyHint.style.display='none';
+    list.forEach(m => {
+      const card = document.createElement('div'); card.className='map-card'; card.dataset.path = m.path;
+      const thumb = document.createElement('div'); thumb.className='map-thumb';
+      // Asynchronous realistic preview
+      (async ()=>{
+        const canvasPrev = await getMapPreview(m.path, { maxWidth: 200, maxHeight: 140, tileSize: 10 });
+        if (canvasPrev){ thumb.innerHTML=''; thumb.appendChild(canvasPrev); }
+        else { thumb.textContent='(no preview)'; }
+      })();
+      const meta = document.createElement('div'); meta.className='map-meta';
+      const nameEl = document.createElement('div'); nameEl.className='map-name'; nameEl.textContent = m.label;
+      const sizeEl = document.createElement('div'); sizeEl.className='map-size'; sizeEl.textContent = 'Loading…';
+      meta.appendChild(nameEl); meta.appendChild(sizeEl);
+      card.appendChild(thumb); card.appendChild(meta);
+      card.addEventListener('click', () => {
+        selectedMapInput.value = m.path;
+        mapGrid.querySelectorAll('.map-card').forEach(c=>c.classList.remove('selected'));
+        card.classList.add('selected');
+      });
+      mapGrid.appendChild(card);
+      // Fetch map to compute size info (q,r extents)
+      fetch(m.path, { cache:'no-cache' }).then(r=>r.json()).then(j=>{
+        const layout = j.layout || []; let cells=0; layout.forEach(line=>cells += (line.match(/[^\s\.]/g)||[]).length);
+        sizeEl.textContent = `${cells} tiles`;
+      }).catch(()=> sizeEl.textContent='?');
+    });
+    // Select first by default if none chosen
+    if (!mapGrid.querySelector('.map-card.selected')){
+      const first = mapGrid.querySelector('.map-card'); if (first){ first.classList.add('selected'); selectedMapInput.value = first.dataset.path; }
+    }
+  }
+
+  // (old buildMapThumbnail removed in favor of preview module)
   form.addEventListener('submit', e => {
     e.preventDefault();
     const data = new FormData(form);
@@ -246,11 +319,18 @@ function setupStartScreen(){
       state.playerConfig[pid].color = data.get(`p${pid}Color`) || state.playerConfig[pid].color;
       state.playerConfig[pid].avatar = data.get(`p${pid}Avatar`) || state.playerConfig[pid].avatar;
     }
+    // Determine chosen map (fallback to first available if not set)
+    let chosenMap = data.get('selectedMap');
+    if (!chosenMap || typeof chosenMap !== 'string' || !chosenMap.trim()){
+      const firstCard = mapGrid?.querySelector('.map-card');
+      if (firstCard) chosenMap = firstCard.dataset.path;
+    }
+    if (!chosenMap) chosenMap = 'maps/irregular_islands.json';
     el.classList.add('hidden');
     if (state._fullResetOnStart){
       // Re-initialize board & pieces to ensure clean state
       (async ()=>{
-        try { await loadMap('maps/irregular_islands.json'); } catch(e){ console.warn('Map reload failed', e); }
+        try { await loadMap(chosenMap); } catch(e){ console.warn('Map reload failed', e); }
         state.turn = 1; state.currentPlayer = 1; state.selectedPieceId = null; state.winner = null; state.winButtons = [];
         state.playerData = {}; state.handLayout=[]; state.handLayoutDirty=true; state.pendingHandAdditions=[]; state.cardAnimations=[]; state.animatingCards.clear();
         state._fullResetOnStart = false;
@@ -258,7 +338,10 @@ function setupStartScreen(){
       })();
     } else {
       // Delay card draw slightly so menu fade out finishes before animation
-      startTurn({ delayDrawMs: 500 });
+      (async ()=>{
+        try { await loadMap(chosenMap); } catch(e){ console.warn('Map load failed (using previous board)', e); }
+        startTurn({ delayDrawMs: 500 });
+      })();
     }
   });
 }
