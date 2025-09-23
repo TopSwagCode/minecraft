@@ -158,6 +158,26 @@ async function init(){
   initBoard();
   attachInput();
   initMusicSystem();
+  // Load persisted player setup (names/colors/avatars/last map)
+  try {
+    const raw = localStorage.getItem('hexGameSetup');
+    if (raw){
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object'){
+        if (parsed.playerConfig){
+          for (const pid of [1,2]){
+            const rec = parsed.playerConfig[pid];
+            if (rec){
+              if (rec.name) state.playerConfig[pid].name = rec.name;
+              if (rec.color) state.playerConfig[pid].color = rec.color;
+              if (rec.avatar) state.playerConfig[pid].avatar = rec.avatar;
+            }
+          }
+        }
+        if (parsed.lastMap) state._savedLastMap = parsed.lastMap;
+      }
+    }
+  } catch(e){ console.warn('Persisted setup load failed', e); }
   const loadingEl = document.getElementById('loadingScreen');
   // Map + textures sequentially; could parallelize but keep progress semantics simple.
   try {
@@ -182,6 +202,19 @@ window.addEventListener('DOMContentLoaded', init);
 function setupStartScreen(){
   const el = document.getElementById('startScreen');
   if (!el){ startTurn({ delayDrawMs: 400 }); return; }
+  function currentSelectedMap(){ const inp = document.getElementById('selectedMapValue'); return (inp && inp.value) || null; }
+  function saveSetup(extra={}){
+    try {
+      const payload = {
+        playerConfig: {
+          1: { name: state.playerConfig[1].name, color: state.playerConfig[1].color, avatar: state.playerConfig[1].avatar },
+          2: { name: state.playerConfig[2].name, color: state.playerConfig[2].color, avatar: state.playerConfig[2].avatar }
+        },
+        lastMap: extra.selectedMap || currentSelectedMap() || state._savedLastMap || undefined
+      };
+      localStorage.setItem('hexGameSetup', JSON.stringify(payload));
+    } catch(e){ /* ignore storage errors */ }
+  }
   // Preset selectable colors
   const presetColors = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899'];
   // Build avatar tile lists from registry (player-* keys) or fallback pattern
@@ -208,6 +241,7 @@ function setupStartScreen(){
         div.addEventListener('click', () => {
           hidden.value = k;
           state.playerConfig[pid].avatar = k; // live preview
+          saveSetup();
           // clear selection
           container.querySelectorAll('.avatar-item').forEach(it=>it.classList.remove('selected'));
             div.classList.add('selected');
@@ -233,6 +267,7 @@ function setupStartScreen(){
         div.addEventListener('click', () => {
           hidden.value = col;
           state.playerConfig[pid].color = col; // live preview
+          saveSetup();
           listEl.querySelectorAll('.color-item').forEach(it=>it.classList.remove('selected'));
           div.classList.add('selected');
         });
@@ -263,6 +298,7 @@ function setupStartScreen(){
       span.textContent = val;
       state.playerConfig[pid].name = val;
       span.classList.remove('editing');
+      saveSetup();
     }
     span.addEventListener('blur', commit);
     span.addEventListener('keydown', (e) => {
@@ -353,7 +389,7 @@ function setupStartScreen(){
   const originalAdd = mapGrid.addEventListener;
   mapGrid.addEventListener('click', (e) => {
     const target = e.target.closest?.('.map-card');
-    if (target){ retainedSelection = target.dataset.path; }
+    if (target){ retainedSelection = target.dataset.path; saveSetup({ selectedMap: retainedSelection }); }
   });
 
   buildPaged();
@@ -381,6 +417,7 @@ function setupStartScreen(){
         mapGrid.querySelectorAll('.map-card').forEach(c=>c.classList.remove('selected'));
         card.classList.add('selected');
         retainedSelection = m.path;
+        saveSetup({ selectedMap: m.path });
       });
       mapGrid.appendChild(card);
       // Fetch map to compute size info (q,r extents)
@@ -392,6 +429,23 @@ function setupStartScreen(){
     // Select first by default if none chosen
     if (!mapGrid.querySelector('.map-card.selected')){
       const first = mapGrid.querySelector('.map-card'); if (first){ first.classList.add('selected'); selectedMapInput.value = first.dataset.path; }
+    }
+    // If saved last map is on this page, select it
+    if (state._savedLastMap){
+      const target = mapGrid.querySelector(`.map-card[data-path="${state._savedLastMap}"]`);
+      if (target){
+        mapGrid.querySelectorAll('.map-card').forEach(c=>c.classList.remove('selected'));
+        target.classList.add('selected'); selectedMapInput.value = state._savedLastMap; retainedSelection = state._savedLastMap;
+      }
+    }
+  }
+
+  // After first build, if saved map exists but not on current page, jump to that page
+  if (state._savedLastMap){
+    const idx = availableMaps.findIndex(m => m.path === state._savedLastMap);
+    if (idx !== -1){
+      const desiredPage = Math.floor(idx / PAGE_SIZE);
+      if (desiredPage !== currentPage){ currentPage = desiredPage; buildPaged(); }
     }
   }
 
@@ -407,6 +461,7 @@ function setupStartScreen(){
         state.playerConfig[pid].name = `Player ${pid}`;
       }
     }
+    saveSetup({ selectedMap: selectedMapInput.value });
     // Determine chosen map (fallback to first available if not set)
     let chosenMap = data.get('selectedMap');
     if (!chosenMap || typeof chosenMap !== 'string' || !chosenMap.trim()){
