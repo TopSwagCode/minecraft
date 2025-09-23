@@ -160,8 +160,9 @@ async function init(){
   initMusicSystem();
   const loadingEl = document.getElementById('loadingScreen');
   // Map + textures sequentially; could parallelize but keep progress semantics simple.
-  // Load a default map first just for background before user picks (can be replaced at Start)
-  try { await loadMap('maps/irregular_islands.json'); } catch (e) { console.warn('Map load failed, continuing with empty board', e); }
+  try {
+    await loadMap('maps/irregular_islands.json');
+  } catch (e) { console.warn('Map load failed, continuing with empty board', e); }
   try {
     await loadAssetsWithProgress();
   } catch(e){ console.warn('Texture load issue', e); }
@@ -240,7 +241,6 @@ function setupStartScreen(){
     }
   }
   buildColorPickers();
-  // --- New Multi-Step Logic ---
   const form = document.getElementById('playerSetupForm');
   const step1 = document.getElementById('stepPlayers');
   const step2 = document.getElementById('stepMaps');
@@ -313,7 +313,6 @@ function setupStartScreen(){
   }
 
   // (old buildMapThumbnail removed in favor of preview module)
-
   form.addEventListener('submit', e => {
     e.preventDefault();
     const data = new FormData(form);
@@ -321,16 +320,19 @@ function setupStartScreen(){
       state.playerConfig[pid].color = data.get(`p${pid}Color`) || state.playerConfig[pid].color;
       state.playerConfig[pid].avatar = data.get(`p${pid}Avatar`) || state.playerConfig[pid].avatar;
     }
-    const mapPath = data.get('selectedMap') || 'maps/irregular_islands.json';
-    (async ()=>{
-      try { await loadMap(mapPath); } catch(e){ console.warn('Selected map load failed, keeping previous', e); }
-      el.classList.add('hidden');
-      if (state._fullResetOnStart){
+    el.classList.add('hidden');
+    if (state._fullResetOnStart){
+      // Re-initialize board & pieces to ensure clean state
+      (async ()=>{
+        try { await loadMap('maps/irregular_islands.json'); } catch(e){ console.warn('Map reload failed', e); }
         state.turn = 1; state.currentPlayer = 1; state.selectedPieceId = null; state.winner = null; state.winButtons = [];
         state.playerData = {}; state.handLayout=[]; state.handLayoutDirty=true; state.pendingHandAdditions=[]; state.cardAnimations=[]; state.animatingCards.clear();
         state._fullResetOnStart = false;
-      }
+        startTurn({ delayDrawMs: 500 });
+      })();
+    } else {
+      // Delay card draw slightly so menu fade out finishes before animation
       startTurn({ delayDrawMs: 500 });
-    })();
+    }
   });
 }
