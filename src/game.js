@@ -8,6 +8,7 @@ import { initBoard, drawBoard } from './view/board.js';
 import { updateCardAnimations } from './view/handCanvas.js';
 import { loadMap } from './maps/loader.js';
 import { loadAllTextures, TextureRegistry } from '../textures.js';
+import { getMapPreview } from './maps/preview.js';
 import { attachInput } from './input/handlers.js';
 import { drawCards, ensurePlayerState, handEmpty, updateHandUI } from './systems/cards.js';
 import { classifyTerrain } from './utils/terrain.js';
@@ -164,6 +165,8 @@ async function init(){
   try {
     await loadAssetsWithProgress();
   } catch(e){ console.warn('Texture load issue', e); }
+  // Notify preview system textures are ready (regenerate cached thumbnails with textures)
+  window.dispatchEvent(new Event('textures-loaded'));
   // Small delay for aesthetic polish
   await new Promise(r => setTimeout(r, 250));
   if (loadingEl){ loadingEl.classList.add('fade-out'); setTimeout(()=>loadingEl.remove(), 600); }
@@ -263,7 +266,13 @@ function setupStartScreen(){
   // List available maps (static list for now; could fetch directory)
   const availableMaps = [
     { path:'maps/irregular_islands.json', label:'Irregular Islands' },
-    { path:'maps/desert_storm.json', label:'Desert Storm' }
+    { path:'maps/desert_storm.json', label:'Desert Storm' },
+    { path:'maps/desert_storm copy.json', label:'Desert Storm 1' },
+    { path:'maps/desert_storm copy 2.json', label:'Desert Storm 2' },
+    { path:'maps/desert_storm copy 3.json', label:'Desert Storm 3' },
+    { path:'maps/desert_storm copy 4.json', label:'Desert Storm 4' },
+    { path:'maps/desert_storm copy 5.json', label:'Desert Storm 5' },
+    { path:'maps/desert_storm copy 6.json', label:'Desert Storm 6' }
   ];
   buildMapCards(availableMaps);
 
@@ -274,8 +283,12 @@ function setupStartScreen(){
     list.forEach(m => {
       const card = document.createElement('div'); card.className='map-card'; card.dataset.path = m.path;
       const thumb = document.createElement('div'); thumb.className='map-thumb';
-      // Small offscreen render of layout characters -> canvas
-      buildMapThumbnail(m.path, thumb);
+      // Asynchronous realistic preview
+      (async ()=>{
+        const canvasPrev = await getMapPreview(m.path, { maxWidth: 200, maxHeight: 140, tileSize: 10 });
+        if (canvasPrev){ thumb.innerHTML=''; thumb.appendChild(canvasPrev); }
+        else { thumb.textContent='(no preview)'; }
+      })();
       const meta = document.createElement('div'); meta.className='map-meta';
       const nameEl = document.createElement('div'); nameEl.className='map-name'; nameEl.textContent = m.label;
       const sizeEl = document.createElement('div'); sizeEl.className='map-size'; sizeEl.textContent = 'Loading…';
@@ -299,47 +312,7 @@ function setupStartScreen(){
     }
   }
 
-  function buildMapThumbnail(path, container){
-    fetch(path, { cache:'no-cache' }).then(r=>r.json()).then(j => {
-      if (!j.layout){ container.textContent='(no preview)'; return; }
-      const cvs = document.createElement('canvas');
-      const rows = j.layout.length; const cols = Math.max(...j.layout.map(l=>l.length));
-      const scale = 6; // small tile size
-      cvs.width = cols * scale + 4; cvs.height = rows * (scale*0.84) + 4;
-      const c = cvs.getContext('2d'); c.fillStyle='#0f1720'; c.fillRect(0,0,cvs.width,cvs.height);
-      const legend = j.legend || {};
-      for (let r=0;r<rows;r++){
-        const line = j.layout[r];
-        for (let col=0; col<line.length; col++){
-          const ch = line[col]; if (ch===' '||ch==='.'||ch==='\t') continue;
-          const entry = legend[ch];
-          let color = '#334155';
-            if (entry && entry.tex){
-              if (/grass/.test(entry.tex)) color='#166534';
-              else if (/sand/.test(entry.tex)) color='#92400e';
-              else if (/water/.test(entry.tex)) color='#0e4f6e';
-              else if (/mountain/.test(entry.tex)) color='#4b5563';
-              else if (/diamond/.test(entry.tex)) color='#0891b2';
-            }
-          const x = col*scale + (r%2 ? scale/2 : 0) + 2;
-          const y = r * (scale*0.84) + 2;
-          // Simple hex-ish blob
-          c.beginPath();
-          const rad = scale/2;
-          c.moveTo(x+rad*0.2,y);
-          c.lineTo(x+rad*0.8,y);
-          c.lineTo(x+rad,y+rad*0.5);
-          c.lineTo(x+rad*0.8,y+rad);
-          c.lineTo(x+rad*0.2,y+rad);
-          c.lineTo(x,y+rad*0.5);
-          c.closePath();
-          c.fillStyle=color; c.fill();
-        }
-      }
-      container.innerHTML='';
-      container.appendChild(cvs);
-    }).catch(()=>{ container.textContent='(error)'; });
-  }
+  // (old buildMapThumbnail removed in favor of preview module)
 
   form.addEventListener('submit', e => {
     e.preventDefault();
