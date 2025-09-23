@@ -44,10 +44,16 @@
 					</div>
 					<div class="step-actions">
 						<button type="button" id="toStep2Btn">Next →</button>
+						<button type="submit" class="alt-start-btn" id="quickStartBtn">Start Now</button>
 					</div>
 				</div>
 				<div id="stepMaps" class="step-content">
 					<input type="hidden" name="selectedMap" id="selectedMapValue" />
+					<div class="map-pagination-bar" aria-label="Map pagination controls">
+						<button type="button" class="map-page-btn" id="mapPrevBtn" aria-label="Previous maps" disabled>←</button>
+						<div class="map-page-indicator" id="mapPageIndicator">Page 1</div>
+						<button type="button" class="map-page-btn" id="mapNextBtn" aria-label="Next maps">→</button>
+					</div>
 					<div class="map-grid" id="mapGrid"></div>
 					<div id="mapEmptyHint" class="empty-hint" style="display:none;">No maps found</div>
 					<div class="step-actions">

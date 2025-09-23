@@ -273,7 +273,56 @@ function setupStartScreen(){
     { path:'maps/desert_storm copy 5.json', label:'Desert Storm 5' },
     { path:'maps/desert_storm copy 6.json', label:'Desert Storm 6' }
   ];
-  buildMapCards(availableMaps);
+  const PAGE_SIZE = 3; // maps per page (reduced from 6 to show only 3 per page)
+  let currentPage = 0; // zero-based
+  const prevBtn = document.getElementById('mapPrevBtn');
+  const nextBtn = document.getElementById('mapNextBtn');
+  const pageIndicator = document.getElementById('mapPageIndicator');
+  let retainedSelection = null; // remember selected map across page changes
+
+  function updatePaginationControls(){
+    const totalPages = Math.ceil(availableMaps.length / PAGE_SIZE) || 1;
+    if (pageIndicator) pageIndicator.textContent = `Page ${currentPage+1} / ${totalPages}`;
+    if (prevBtn) prevBtn.disabled = currentPage === 0;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages - 1;
+  }
+
+  function pageSlice(){
+    const start = currentPage * PAGE_SIZE;
+    return availableMaps.slice(start, start + PAGE_SIZE);
+  }
+
+  function buildPaged(){
+    buildMapCards(pageSlice());
+    // Restore selection if retained map is on this page
+    if (retainedSelection){
+      const card = mapGrid.querySelector(`.map-card[data-path="${retainedSelection}"]`);
+      if (card){
+        mapGrid.querySelectorAll('.map-card').forEach(c=>c.classList.remove('selected'));
+        card.classList.add('selected');
+        const input = document.getElementById('selectedMapValue');
+        if (input) input.value = retainedSelection;
+      }
+    }
+    updatePaginationControls();
+  }
+
+  prevBtn?.addEventListener('click', () => {
+    if (currentPage>0){ currentPage--; buildPaged(); }
+  });
+  nextBtn?.addEventListener('click', () => {
+    const totalPages = Math.ceil(availableMaps.length / PAGE_SIZE) || 1;
+    if (currentPage < totalPages-1){ currentPage++; buildPaged(); }
+  });
+
+  // Hook into selection retention
+  const originalAdd = mapGrid.addEventListener;
+  mapGrid.addEventListener('click', (e) => {
+    const target = e.target.closest?.('.map-card');
+    if (target){ retainedSelection = target.dataset.path; }
+  });
+
+  buildPaged();
 
   function buildMapCards(list){
     mapGrid.innerHTML='';
@@ -297,6 +346,7 @@ function setupStartScreen(){
         selectedMapInput.value = m.path;
         mapGrid.querySelectorAll('.map-card').forEach(c=>c.classList.remove('selected'));
         card.classList.add('selected');
+        retainedSelection = m.path;
       });
       mapGrid.appendChild(card);
       // Fetch map to compute size info (q,r extents)
