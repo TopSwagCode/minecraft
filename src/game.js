@@ -319,11 +319,18 @@ function setupStartScreen(){
       state.playerConfig[pid].color = data.get(`p${pid}Color`) || state.playerConfig[pid].color;
       state.playerConfig[pid].avatar = data.get(`p${pid}Avatar`) || state.playerConfig[pid].avatar;
     }
+    // Determine chosen map (fallback to first available if not set)
+    let chosenMap = data.get('selectedMap');
+    if (!chosenMap || typeof chosenMap !== 'string' || !chosenMap.trim()){
+      const firstCard = mapGrid?.querySelector('.map-card');
+      if (firstCard) chosenMap = firstCard.dataset.path;
+    }
+    if (!chosenMap) chosenMap = 'maps/irregular_islands.json';
     el.classList.add('hidden');
     if (state._fullResetOnStart){
       // Re-initialize board & pieces to ensure clean state
       (async ()=>{
-        try { await loadMap('maps/irregular_islands.json'); } catch(e){ console.warn('Map reload failed', e); }
+        try { await loadMap(chosenMap); } catch(e){ console.warn('Map reload failed', e); }
         state.turn = 1; state.currentPlayer = 1; state.selectedPieceId = null; state.winner = null; state.winButtons = [];
         state.playerData = {}; state.handLayout=[]; state.handLayoutDirty=true; state.pendingHandAdditions=[]; state.cardAnimations=[]; state.animatingCards.clear();
         state._fullResetOnStart = false;
@@ -331,7 +338,10 @@ function setupStartScreen(){
       })();
     } else {
       // Delay card draw slightly so menu fade out finishes before animation
-      startTurn({ delayDrawMs: 500 });
+      (async ()=>{
+        try { await loadMap(chosenMap); } catch(e){ console.warn('Map load failed (using previous board)', e); }
+        startTurn({ delayDrawMs: 500 });
+      })();
     }
   });
 }
