@@ -20,27 +20,40 @@
 	<div id="startScreen" class="start-screen" aria-modal="true" role="dialog">
 		<div class="start-panel">
 			<h2>Start Game</h2>
+			<div class="steps-header">
+				<button type="button" class="step-pill active" data-step-pill="1">Players</button>
+				<button type="button" class="step-pill" data-step-pill="2">Map</button>
+			</div>
 			<form id="playerSetupForm">
-				<div class="player-config" data-player="1">
-					<h3>Player 1</h3>
-					<!--<div class="color-picker-label">Color</div>
-					<div class="color-list" id="p1ColorList"></div>-->
-					<input type="hidden" name="p1Color" id="p1ColorValue" value="#3b82f6" />
-					<div class="avatar-picker-label">Avatar</div>
-					<div class="avatar-list" id="p1AvatarList"></div>
-					<input type="hidden" name="p1Avatar" id="p1AvatarValue" />
+				<div id="stepPlayers" class="step-content active">
+					<div class="players-grid">
+						<div class="player-config" data-player="1">
+							<h3>Player 1</h3>
+							<input type="hidden" name="p1Color" id="p1ColorValue" value="#3b82f6" />
+							<div class="avatar-picker-label">Avatar</div>
+							<div class="avatar-list" id="p1AvatarList"></div>
+							<input type="hidden" name="p1Avatar" id="p1AvatarValue" />
+						</div>
+						<div class="player-config" data-player="2">
+							<h3>Player 2</h3>
+							<input type="hidden" name="p2Color" id="p2ColorValue" value="#ef4444" />
+							<div class="avatar-picker-label">Avatar</div>
+							<div class="avatar-list" id="p2AvatarList"></div>
+							<input type="hidden" name="p2Avatar" id="p2AvatarValue" />
+						</div>
+					</div>
+					<div class="step-actions">
+						<button type="button" id="toStep2Btn">Next →</button>
+					</div>
 				</div>
-				<div class="player-config" data-player="2">
-					<h3>Player 2</h3>
-					<!--<div class="color-picker-label">Color</div>
-					<div class="color-list" id="p2ColorList"></div>-->
-					<input type="hidden" name="p2Color" id="p2ColorValue" value="#ef4444" />
-					<div class="avatar-picker-label">Avatar</div>
-					<div class="avatar-list" id="p2AvatarList"></div>
-					<input type="hidden" name="p2Avatar" id="p2AvatarValue" />
-				</div>
-				<div class="actions">
-					<button type="submit" id="startGameBtn">Start</button>
+				<div id="stepMaps" class="step-content">
+					<input type="hidden" name="selectedMap" id="selectedMapValue" />
+					<div class="map-grid" id="mapGrid"></div>
+					<div id="mapEmptyHint" class="empty-hint" style="display:none;">No maps found</div>
+					<div class="step-actions">
+						<button type="button" id="backToStep1Btn">← Back</button>
+						<button type="submit" id="startGameBtn">Start Game</button>
+					</div>
 				</div>
 			</form>
 		</div>

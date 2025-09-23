@@ -1,11 +1,11 @@
 {
   "name": "Desert Storm",
   "layout": [
-    "   aaabbaaaa     ",
-    "  aaaabbbccad    ",
-    "  aabbbbbwwad    ",
-    "  aawwbbbwaad    ",
-    "   aaabbbbb      "
+    "   aaabbaaaaaaabbaaaa.       ",
+    "  aaaabbbccadaaaabbbccad     ",
+    "  aabbbbbwwadaabbbbbwwad     ",
+    "  aawwbbbwaad                ",
+    "   aaabbbbb                  "
   ],
   "legend": {
     "a": { "tex": "hello-grass" },

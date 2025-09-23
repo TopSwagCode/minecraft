@@ -267,7 +267,6 @@ function setupStartScreen(){
   const availableMaps = [
     { path:'maps/irregular_islands.json', label:'Irregular Islands' },
     { path:'maps/desert_storm.json', label:'Desert Storm' },
-    { path:'maps/desert_storm copy.json', label:'Desert Storm 1' },
     { path:'maps/desert_storm copy 2.json', label:'Desert Storm 2' },
     { path:'maps/desert_storm copy 3.json', label:'Desert Storm 3' },
     { path:'maps/desert_storm copy 4.json', label:'Desert Storm 4' },
