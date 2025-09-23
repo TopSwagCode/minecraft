@@ -1,5 +1,5 @@
 // High-level game bootstrap tying subsystems together (WIP modular refactor)
-import { state } from './core/state.js';
+import { state, loadPersistedSettings } from './core/state.js';
 import { HEX_SIZE, COLORS } from './core/constants.js';
 import { startLoop, onUpdate, onRender } from './engine/loop.js';
 import { updateAnimations } from './systems/animation.js';
@@ -157,6 +157,8 @@ async function loadAssetsWithProgress(){
 async function init(){
   initBoard();
   attachInput();
+  // Load user settings (card size, volume, mute) before initializing music system
+  try { loadPersistedSettings(); } catch(_){}
   initMusicSystem();
   // Load persisted player setup (names/colors/avatars/last map)
   try {

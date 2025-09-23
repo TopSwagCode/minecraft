@@ -72,6 +72,8 @@ export function drawBoard(){
   drawDiamondRain(ctx);
   //drawHUD(); Maybe delete HUD or have as debug option.
   drawMusicButton();
+  drawSettingsButton();
+  if (state.settings.open){ drawSettingsOverlay(); }
   drawHand(ctx, canvas);
   if (state.winner){ drawWinOverlay(state.winner); }
 }
@@ -152,6 +154,104 @@ function drawMusicButton(){
   if (state.music.muted){
     ctx.strokeStyle='#f87171'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(-14,-14); ctx.lineTo(14,14); ctx.stroke();
   }
+  ctx.restore();
+}
+
+function drawSettingsButton(){
+  const b = state.settingsButton;
+  b.w = 38; b.h = 38; b.x = state.musicButton.x - b.w - 12; b.y = 12;
+  const isHover = state.hoverControl === 'settings';
+  const open = state.settings.open;
+  ctx.save(); ctx.globalAlpha=0.9;
+  const grad = ctx.createLinearGradient(b.x,b.y,b.x,b.y+b.h);
+  if (open){ grad.addColorStop(0,'#8b5cf6'); grad.addColorStop(1,'#6d28d9'); }
+  else if (isHover){ grad.addColorStop(0,'#6366f1'); grad.addColorStop(1,'#4338ca'); }
+  else { grad.addColorStop(0,'#4f46e5'); grad.addColorStop(1,'#3730a3'); }
+  ctx.fillStyle=grad;
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(b.x,b.y,b.w,b.h,10) : roundedRectPolyfill(ctx,b.x,b.y,b.w,b.h,10); ctx.fill();
+  ctx.lineWidth=2; ctx.strokeStyle = isHover || open ? '#312e81' : '#1e1b4b'; ctx.stroke();
+  // Cog icon
+  ctx.translate(b.x + b.w/2, b.y + b.h/2);
+  ctx.rotate(open ? 0.4 : 0);
+  ctx.fillStyle='#fff';
+  const teeth = 8; const R=12; const r=7; ctx.beginPath();
+  for (let i=0;i<teeth;i++){
+    const a = (i/teeth)*Math.PI*2; const a2 = ((i+0.5)/teeth)*Math.PI*2;
+    const x1 = Math.cos(a)*R, y1 = Math.sin(a)*R; const x2 = Math.cos(a2)*r, y2 = Math.sin(a2)*r;
+    if (i===0) ctx.moveTo(x1,y1); ctx.lineTo(x1,y1); ctx.lineTo(x2,y2);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.fillStyle='#1e1b4b'; ctx.arc(0,0,5,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawSettingsOverlay(){
+  const panelW = Math.min(440, canvas.width - 60);
+  const panelH = 420; // increased to accommodate buttons below card size
+  const x = canvas.width/2 - panelW/2;
+  const y = canvas.height/2 - panelH/2;
+  ctx.save();
+  ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  const grad = ctx.createLinearGradient(x,y,x,y+panelH);
+  grad.addColorStop(0,'#1f2937'); grad.addColorStop(1,'#111827');
+  ctx.fillStyle=grad; ctx.globalAlpha=0.96;
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x,y,panelW,panelH,18) : roundedRectPolyfill(ctx,x,y,panelW,panelH,18); ctx.fill();
+  ctx.lineWidth=2; ctx.strokeStyle='#374151'; ctx.stroke(); ctx.globalAlpha=1;
+  ctx.fillStyle='#fff'; ctx.font='600 26px system-ui'; ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText('Settings', x + panelW/2, y + 18);
+  // Volume slider
+  const sliderX = x + 50; const sliderY = y + 90; const sliderW = panelW - 100; const sliderH = 14;
+  const trackRadius = 7;
+  const vol = state.music.muted ? 0 : state.music.volume;
+  ctx.fillStyle='#1f2937'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(sliderX,sliderY,sliderW,sliderH,trackRadius) : roundedRectPolyfill(ctx,sliderX,sliderY,sliderW,sliderH,trackRadius); ctx.fill();
+  const fillW = vol * sliderW;
+  const gradFill = ctx.createLinearGradient(sliderX,sliderY,sliderX+sliderW,sliderY);
+  gradFill.addColorStop(0,'#10b981'); gradFill.addColorStop(1,'#047857');
+  ctx.fillStyle=gradFill; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(sliderX,sliderY,fillW,sliderH,trackRadius) : roundedRectPolyfill(ctx,sliderX,sliderY,fillW,sliderH,trackRadius); ctx.fill();
+  const knobX = sliderX + fillW; const knobR = 11; ctx.beginPath(); ctx.arc(knobX, sliderY+sliderH/2, knobR, 0, Math.PI*2); ctx.fillStyle='#f0fdfa'; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='#065f46'; ctx.stroke();
+  ctx.font='14px system-ui'; ctx.fillStyle='#d1d5db'; ctx.textAlign='left'; ctx.fillText('Music Volume', sliderX, sliderY - 26);
+  // Card size buttons
+  const sizes = ['small','medium','large'];
+  const btnW = (panelW - 100 - 20)/3; const btnH = 46; const btnY = y + 170; let btnX = x + 50;
+  state._settingsInteractive.cardSizeButtons = [];
+  sizes.forEach(s => {
+    const isActive = state.settings.cardSize === s;
+    const hover = state.hoverControl === 'card-size:'+s;
+    const g = ctx.createLinearGradient(btnX,btnY,btnX,btnY+btnH);
+    if (isActive){ g.addColorStop(0,'#2563eb'); g.addColorStop(1,'#1d4ed8'); }
+    else if (hover){ g.addColorStop(0,'#374151'); g.addColorStop(1,'#1f2937'); }
+    else { g.addColorStop(0,'#283341'); g.addColorStop(1,'#1d2731'); }
+    ctx.fillStyle=g; ctx.globalAlpha=0.95; ctx.beginPath(); ctx.roundRect?ctx.roundRect(btnX,btnY,btnW,btnH,12):roundedRectPolyfill(ctx,btnX,btnY,btnW,btnH,12); ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle = isActive? '#0d285a':'#111827'; ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.font='600 15px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(s[0].toUpperCase()+s.slice(1), btnX+btnW/2, btnY+btnH/2+1);
+    state._settingsInteractive.cardSizeButtons.push({ id:s, x:btnX, y:btnY, w:btnW, h:btnH });
+    btnX += btnW + 10;
+  });
+  ctx.fillStyle='#d1d5db'; ctx.font='14px system-ui'; ctx.textAlign='left'; ctx.fillText('Card Size', x+50, btnY - 28);
+  // Back to start menu button
+  const backW = panelW - 100; const backH = 54; const backX = x + 50;
+  // Place resume and return buttons BELOW card size section
+  const cardBottom = btnY + btnH; // bottom of card size buttons
+  const resumeH = 50; const resumeX = backX; const resumeW = backW;
+  const resumeY = cardBottom + 32; // gap below card size
+  const backY = resumeY + resumeH + 18; // gap between resume and return
+  const hoverResume = state.hoverControl === 'settings:resume';
+  const gr = ctx.createLinearGradient(resumeX,resumeY,resumeX,resumeY+resumeH);
+  if (hoverResume){ gr.addColorStop(0,'#10b981'); gr.addColorStop(1,'#059669'); } else { gr.addColorStop(0,'#047857'); gr.addColorStop(1,'#065f46'); }
+  ctx.fillStyle=gr; ctx.beginPath(); ctx.roundRect?ctx.roundRect(resumeX,resumeY,resumeW,resumeH,14):roundedRectPolyfill(ctx,resumeX,resumeY,resumeW,resumeH,14); ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle= hoverResume? '#064e3b':'#033228'; ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.font='600 18px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('Resume Game', resumeX+resumeW/2, resumeY+resumeH/2+1);
+  state._settingsInteractive.resumeButton = { x: resumeX, y: resumeY, w: resumeW, h: resumeH };
+  const hoverBack = state.hoverControl === 'settings:back-start';
+  const gb = ctx.createLinearGradient(backX,backY,backX,backY+backH);
+  if (hoverBack){ gb.addColorStop(0,'#3b82f6'); gb.addColorStop(1,'#1d4ed8'); }
+  else { gb.addColorStop(0,'#2563eb'); gb.addColorStop(1,'#1749b3'); }
+  ctx.fillStyle=gb; ctx.beginPath(); ctx.roundRect?ctx.roundRect(backX,backY,backW,backH,14):roundedRectPolyfill(ctx,backX,backY,backW,backH,14); ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle= hoverBack? '#163d8c':'#0d285a'; ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.font='600 18px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('Return to Start Menu', backX+backW/2, backY+backH/2+1);
+  state._settingsInteractive.toStartButton = { x: backX, y: backY, w: backW, h: backH };
+  // Save slider interactive regions
+  state._settingsInteractive.volumeSlider.track = { x: sliderX, y: sliderY, w: sliderW, h: sliderH };
+  state._settingsInteractive.volumeSlider.knob = { x: knobX - knobR, y: sliderY, w: knobR*2, h: sliderH };
+  // Store panel rectangle for outside-click detection
+  state._settingsInteractive.panelRect = { x, y, w: panelW, h: panelH };
   ctx.restore();
 }
 

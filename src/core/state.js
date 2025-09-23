@@ -46,4 +46,61 @@ export const state = {
     muted: false,
   },
   musicButton: { x:0, y:0, w:38, h:38 },
+  // Settings UI state
+  settings: {
+    open: false,
+    cardSize: 'medium', // small | medium | large
+  },
+  settingsButton: { x:0, y:0, w:38, h:38 },
+  // Derived interactive regions for settings overlay (rebuilt each frame when open)
+  _settingsInteractive: {
+    cardSizeButtons: [], // {id,label,x,y,w,h}
+    backButton: null, // {x,y,w,h}
+    volumeSlider: { track:null, knob:null, dragging:false, value:0.5 },
+    toStartButton: null,
+    resumeButton: null,
+    panelRect: null, // {x,y,w,h}
+  },
 };
+
+// --- Settings persistence (localStorage)
+// Stored under key 'hexGameSettings'
+// Fields:
+//   cardSize: 'small' | 'medium' | 'large'
+//   volume: number (0..1)
+//   muted: boolean
+// Load early (after state import) in main game init to restore user preferences.
+const SETTINGS_STORAGE_KEY = 'hexGameSettings';
+
+export function loadPersistedSettings(){
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== 'object') return;
+    if (typeof data.cardSize === 'string' && ['small','medium','large'].includes(data.cardSize)){
+      state.settings.cardSize = data.cardSize;
+    }
+    if (typeof data.volume === 'number' && data.volume >=0 && data.volume <=1){
+      state.music.volume = data.volume;
+      // Sync slider default value
+      state._settingsInteractive.volumeSlider.value = data.volume;
+      if (state.music.audio) state.music.audio.volume = data.volume;
+    }
+    if (typeof data.muted === 'boolean'){
+      state.music.muted = data.muted;
+      if (state.music.audio) state.music.audio.muted = data.muted;
+    }
+  } catch(e){ /* ignore */ }
+}
+
+export function savePersistedSettings(){
+  try {
+    const payload = {
+      cardSize: state.settings.cardSize,
+      volume: state.music.volume,
+      muted: state.music.muted,
+    };
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload));
+  } catch(e){ /* ignore */ }
+}
