@@ -66,7 +66,7 @@ export function drawBoard(){
       }
     }
   }
-  if (state.previewPath && state.previewPath.length>1){ drawPreviewPath(state.previewPath); }
+  // Removed hover preview path rendering per request.
   for (const p of state.pieces) drawPiece(ctx,p,COLORS,HEX_SIZE * (state.zoom || 1));
   // Celebration particles (if winner)
   drawDiamondRain(ctx);
@@ -369,19 +369,7 @@ function roundedRectPolyfill(ctx,x,y,w,h,r){
   ctx.closePath(); ctx.restore();
 }
 
-function drawPreviewPath(path){
-  ctx.save(); ctx.lineWidth=6; ctx.lineCap='round'; ctx.lineJoin='round';
-  ctx.strokeStyle='rgba(0,0,0,0.55)'; ctx.beginPath();
-  for (let i=0;i<path.length;i++){ const {x,y} = axialToPixel(path[i].q,path[i].r); if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
-  ctx.stroke();
-  ctx.lineWidth=3; const grad = ctx.createLinearGradient(0,0,canvas.width,canvas.height); grad.addColorStop(0,'#ffe08a'); grad.addColorStop(1,'#ffb347');
-  ctx.strokeStyle=grad; ctx.beginPath();
-  for (let i=0;i<path.length;i++){ const {x,y} = axialToPixel(path[i].q,path[i].r); if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
-  ctx.stroke();
-  const z = state.zoom || 1;
-  for (let i=1;i<path.length;i++){ const {x,y}=axialToPixel(path[i].q,path[i].r); ctx.beginPath(); ctx.fillStyle='#ffd166'; ctx.arc(x,y,6*z,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#553300'; ctx.font= `${10*z}px system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(String(i),x,y+0.5);} 
-  ctx.restore();
-}
+// drawPreviewPath removed.
 
 function drawHex(q,r, opts={}){
   const { x,y } = axialToPixel(q,r);
