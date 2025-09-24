@@ -181,6 +181,15 @@ function onTouchCancel(){
 
 function processUIClick(x,y, evt){
   // Settings open overlay priority
+  if (state.help.open){
+    const inter = state._helpInteractive;
+    // Close button
+    const cb = inter.closeButton;
+    if (cb && x>=cb.x && x<=cb.x+cb.w && y>=cb.y && y<=cb.y+cb.h){ state.help.open=false; return true; }
+    // Outside click closes
+    const pr = inter.panelRect;
+    if (pr){ const inside = x>=pr.x && x<=pr.x+pr.w && y>=pr.y && y<=pr.y+pr.h; if (!inside){ state.help.open=false; return true; } }
+  }
   if (state.settings.open){
     // Interactions inside overlay
     const inter = state._settingsInteractive;
@@ -225,10 +234,18 @@ function processUIClick(x,y, evt){
   // Settings button
   const sb = state.settingsButton;
   if (x>=sb.x && x<=sb.x+sb.w && y>=sb.y && y<=sb.y+sb.h){
-    state.settings.open = !state.settings.open;
+    const next = !state.settings.open;
+    state.settings.open = next;
+    if (next){ state.help.open = false; }
     if (state.settings.open){
       state._settingsInteractive.volumeSlider.value = state.music.muted ? 0 : state.music.volume;
     }
+    return true;
+  }
+  // Help button
+  const hb = state.helpButton;
+  if (x>=hb.x && x<=hb.x+hb.w && y>=hb.y && y<=hb.y+hb.h){
+    const next = !state.help.open; state.help.open = next; if (next){ state.settings.open = false; }
     return true;
   }
   // Win overlay buttons
@@ -342,6 +359,12 @@ function onClick(evt){
 function onMove(evt){
   if (state.animating) return;
   const { x, y } = toCanvasCoords(evt.clientX, evt.clientY);
+  // Help overlay hover logic
+  if (state.help.open){
+    const inter = state._helpInteractive; state.hoverControl=null;
+    const cb = inter.closeButton; if (cb && x>=cb.x && x<=cb.x+cb.w && y>=cb.y && y<=cb.y+cb.h) state.hoverControl='help:close';
+    return; // suspend other hovers while help open
+  }
   // Settings overlay hover logic if open
   if (state.settings.open){
     const inter = state._settingsInteractive;
@@ -379,6 +402,10 @@ function onMove(evt){
   const sb = state.settingsButton;
   if (x>=sb.x && x<=sb.x+sb.w && y>=sb.y && y<=sb.y+sb.h){ state.hoverControl='settings'; }
   else if (state.hoverControl === 'settings') state.hoverControl=null;
+  // Help button hover
+  const hb = state.helpButton;
+  if (x>=hb.x && x<=hb.x+hb.w && y>=hb.y && y<=hb.y+hb.h){ state.hoverControl='help'; }
+  else if (state.hoverControl === 'help') state.hoverControl=null;
   // Win buttons hover
   if (state.winner && state.winButtons && state.winButtons.length){
     const hit = state.winButtons.find(b => x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h);

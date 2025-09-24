@@ -52,6 +52,15 @@ export const state = {
     cardSize: 'medium', // small | medium | large
   },
   settingsButton: { x:0, y:0, w:38, h:38 },
+  // Help / Rules overlay state
+  help: {
+    open: false,
+  },
+  helpButton: { x:0, y:0, w:38, h:38 },
+  _helpInteractive: {
+    closeButton: null, // {x,y,w,h}
+    panelRect: null,
+  },
   // Derived interactive regions for settings overlay (rebuilt each frame when open)
   _settingsInteractive: {
     cardSizeButtons: [], // {id,label,x,y,w,h}

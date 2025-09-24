@@ -71,11 +71,17 @@ export function drawBoard(){
   // Celebration particles (if winner)
   drawDiamondRain(ctx);
   //drawHUD(); Maybe delete HUD or have as debug option.
+  // UI chrome beneath overlays
   drawMusicButton();
   drawSettingsButton();
-  if (state.settings.open){ drawSettingsOverlay(); }
+  drawHelpButton();
+  // Hand (cards) should be below overlay panels
   drawHand(ctx, canvas);
+  // Winner overlay sits above board & hand but below help/settings (if we prefer winner topmost, move below overlays)
   if (state.winner){ drawWinOverlay(state.winner); }
+  // Draw modal overlays LAST so they sit on top of everything else
+  if (state.settings.open){ drawSettingsOverlay(); }
+  if (state.help.open){ drawHelpOverlay(); }
 }
 
 // Cache background image element after first access
@@ -182,6 +188,65 @@ function drawSettingsButton(){
   }
   ctx.closePath(); ctx.fill();
   ctx.beginPath(); ctx.fillStyle='#1e1b4b'; ctx.arc(0,0,5,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawHelpButton(){
+  const b = state.helpButton;
+  b.w = 38; b.h = 38; b.x = state.settingsButton.x - b.w - 12; b.y = 12;
+  const isHover = state.hoverControl === 'help';
+  const open = state.help.open;
+  ctx.save(); ctx.globalAlpha=0.9;
+  const grad = ctx.createLinearGradient(b.x,b.y,b.x,b.y+b.h);
+  if (open){ grad.addColorStop(0,'#f59e0b'); grad.addColorStop(1,'#d97706'); }
+  else if (isHover){ grad.addColorStop(0,'#fbbf24'); grad.addColorStop(1,'#f59e0b'); }
+  else { grad.addColorStop(0,'#f59e0b'); grad.addColorStop(1,'#b45309'); }
+  ctx.fillStyle=grad;
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(b.x,b.y,b.w,b.h,10) : roundedRectPolyfill(ctx,b.x,b.y,b.w,b.h,10); ctx.fill();
+  ctx.lineWidth=2; ctx.strokeStyle = isHover || open ? '#92400e':'#78350f'; ctx.stroke();
+  // Question mark icon
+  ctx.fillStyle='#fff'; ctx.font='700 22px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('?', b.x + b.w/2, b.y + b.h/2 + 1);
+  ctx.restore();
+}
+
+function drawHelpOverlay(){
+  const panelW = Math.min(520, canvas.width - 60);
+  const panelH = Math.min(480, canvas.height - 60);
+  const x = canvas.width/2 - panelW/2;
+  const y = canvas.height/2 - panelH/2;
+  ctx.save();
+  ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  const grad = ctx.createLinearGradient(x,y,x,y+panelH);
+  grad.addColorStop(0,'#1f2937'); grad.addColorStop(1,'#111827');
+  ctx.fillStyle=grad; ctx.globalAlpha=0.96;
+  ctx.beginPath(); ctx.roundRect?ctx.roundRect(x,y,panelW,panelH,18):roundedRectPolyfill(ctx,x,y,panelW,panelH,18); ctx.fill();
+  ctx.lineWidth=2; ctx.strokeStyle='#374151'; ctx.stroke(); ctx.globalAlpha=1;
+  ctx.fillStyle='#fff'; ctx.font='600 26px system-ui'; ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText('How to Play', x + panelW/2, y + 18);
+  // Content
+  const padX = x + 36; let cursorY = y + 70; const maxWidth = panelW - 72;
+  ctx.textAlign='left'; ctx.fillStyle='#d1d5db'; ctx.font='14px system-ui';
+  function para(text){ const words=text.split(/\s+/); let line=''; const lh=20; for (const w of words){ const test=line? line+' '+w : w; const m=ctx.measureText(test).width; if (m>maxWidth){ ctx.fillText(line,padX,cursorY); cursorY+=lh; line=w; } else line=test; } if (line){ ctx.fillText(line,padX,cursorY); cursorY+=lh; } cursorY+=4; }
+  // Rules summary
+  ctx.fillStyle='#fbbf24'; ctx.font='600 15px system-ui'; ctx.fillText('Goal', padX, cursorY+4); cursorY+=26; ctx.fillStyle='#d1d5db'; ctx.font='14px system-ui';
+  para('Reach the diamond terrain or fulfill the victory condition by moving your piece strategically across the hex map.');
+  ctx.fillStyle='#fbbf24'; ctx.font='600 15px system-ui'; ctx.fillText('Turns', padX, cursorY+4); cursorY+=26; ctx.fillStyle='#d1d5db'; ctx.font='14px system-ui';
+  para('Players alternate turns. On your turn select a card from your hand, then choose a reachable path of hexes to move. Range icons on a card show how far movement can extend. Different terrains may influence movement options.');
+  // Deck info
+  const pdata = state.playerData[state.currentPlayer];
+  ctx.fillStyle='#fbbf24'; ctx.font='600 15px system-ui'; ctx.fillText('Tips', padX, cursorY+4); cursorY+=26; ctx.fillStyle='#d1d5db'; ctx.font='14px system-ui';
+  para('Use zoom (mouse wheel / pinch) and drag to pan the board for better tactical visibility.');
+  // Author info
+  ctx.fillStyle='#fbbf24'; ctx.font='600 15px system-ui'; ctx.fillText('About', padX, cursorY+4); cursorY+=26; ctx.fillStyle='#d1d5db'; ctx.font='14px system-ui';
+  para('Created by Joshua Ryder (TopSwagCode). This prototype game I created for my son who loves minecraft. It demonstrates a turn-based hex movement & card-range mechanic. Feedback and ideas are welcome!');
+  // Close button
+  const btnW = 160, btnH = 50; const btnX = x + panelW/2 - btnW/2; const btnY = y + panelH - btnH - 28; const hover = state.hoverControl==='help:close';
+  const g = ctx.createLinearGradient(btnX,btnY,btnX,btnY+btnH); if (hover){ g.addColorStop(0,'#3b82f6'); g.addColorStop(1,'#1d4ed8'); } else { g.addColorStop(0,'#2563eb'); g.addColorStop(1,'#1749b3'); }
+  ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect?ctx.roundRect(btnX,btnY,btnW,btnH,14):roundedRectPolyfill(ctx,btnX,btnY,btnW,btnH,14); ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle= hover? '#163d8c':'#0d285a'; ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.font='600 18px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('Close', btnX+btnW/2, btnY+btnH/2+1);
+  state._helpInteractive.panelRect = { x, y, w: panelW, h: panelH };
+  state._helpInteractive.closeButton = { x: btnX, y: btnY, w: btnW, h: btnH };
   ctx.restore();
 }
 
