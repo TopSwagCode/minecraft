@@ -3,6 +3,16 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<meta name="theme-color" content="#2563eb" />
+	<link rel="manifest" href="manifest.webmanifest" />
+	<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+	<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png" />
+	<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png" />
+	<link rel="icon" type="image/png" sizes="192x192" href="icons/android-chrome-192x192.png" />
+	<link rel="icon" type="image/png" sizes="512x512" href="icons/android-chrome-512x512.png" />
+	<link rel="shortcut icon" href="icons/favicon.ico" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 	<title>Help-Motivate.Me</title>
 	<link rel="stylesheet" href="style.css" />
 </head>
@@ -69,5 +79,12 @@
 	</main>
 	<script type="module" src="textures.js"></script>
 	<script type="module" src="src/game.js"></script>
+	<script>
+	if ('serviceWorker' in navigator) {
+	  window.addEventListener('load', () => {
+	    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW registration failed', err));
+	  });
+	}
+	</script>
 </body>
 </html>
